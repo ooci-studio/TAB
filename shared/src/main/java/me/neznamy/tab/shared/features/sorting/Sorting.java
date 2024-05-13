@@ -208,7 +208,7 @@ public class Sorting extends TabFeature implements SortingManager, JoinListener,
         if (name != null) p.sortingData.teamNameNote = "Set using API";
         NameTag nametag = TAB.getInstance().getNameTagManager();
         if (nametag != null) nametag.unregisterTeam(p, p.sortingData.getShortTeamName());
-        p.sortingData.forcedTeamName = name;sss
+        p.sortingData.forcedTeamName = name;
         if (nametag != null) nametag.registerTeam(p);
         if (layout != null) layout.updateTeamName(p, p.sortingData.fullTeamName);
         if (redis != null && nametag != null) redis.updateTeam(p, p.sortingData.getShortTeamName(),
