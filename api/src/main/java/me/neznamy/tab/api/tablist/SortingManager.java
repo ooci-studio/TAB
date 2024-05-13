@@ -43,4 +43,11 @@ public interface SortingManager {
      * @return  Player's team name based on configuration.
      */
     @NotNull String getOriginalTeamName(@NonNull TabPlayer player);
+
+    /**
+     * 添加组别，用于tablist的排序
+     * @param name 组别名称
+     * @param sort 排序顺序
+     */
+    void addGroup(@NonNull String name,Integer sort);
 }

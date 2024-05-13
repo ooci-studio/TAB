@@ -208,7 +208,7 @@ public class Sorting extends TabFeature implements SortingManager, JoinListener,
         if (name != null) p.sortingData.teamNameNote = "Set using API";
         NameTag nametag = TAB.getInstance().getNameTagManager();
         if (nametag != null) nametag.unregisterTeam(p, p.sortingData.getShortTeamName());
-        p.sortingData.forcedTeamName = name;
+        p.sortingData.forcedTeamName = name;sss
         if (nametag != null) nametag.registerTeam(p);
         if (layout != null) layout.updateTeamName(p, p.sortingData.fullTeamName);
         if (redis != null && nametag != null) redis.updateTeam(p, p.sortingData.getShortTeamName(),
@@ -230,6 +230,15 @@ public class Sorting extends TabFeature implements SortingManager, JoinListener,
         ensureActive();
         ((TabPlayer)player).ensureLoaded();
         return ((TabPlayer)player).sortingData.shortTeamName;
+    }
+
+    @Override
+    public void addGroup(@NonNull String name,Integer sort) {
+        for (SortingType t : usedSortingTypes) {
+            if (t.getDisplayName().equals("GROUPS")){
+                ((Groups)t).addGroup(name, sort);
+            }
+        }
     }
 
     /**

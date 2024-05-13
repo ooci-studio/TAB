@@ -43,4 +43,8 @@ public class Groups extends SortingType {
         }
         return String.valueOf((char) (position + 47));
     }
+
+    public void addGroup(String name,Integer sort){
+        sortedGroups.put(name,sort);
+    }
 }
