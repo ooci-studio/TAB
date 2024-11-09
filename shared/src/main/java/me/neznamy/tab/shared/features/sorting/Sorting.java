@@ -231,7 +231,7 @@ public class Sorting extends RefreshableFeature implements SortingManager, JoinL
     @Override
     public void addGroup(@NonNull String name,Integer sort) {
         for (SortingType t : usedSortingTypes) {
-            if (t.getDisplayName().equals("GROUPS")){
+            if ("GROUPS".equals(t.getDisplayName())){
                 ((Groups)t).addGroup(name, sort);
             }
         }
