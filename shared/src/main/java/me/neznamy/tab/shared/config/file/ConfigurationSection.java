@@ -9,6 +9,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @SuppressWarnings("unchecked")
 @RequiredArgsConstructor
@@ -19,8 +20,6 @@ public class ConfigurationSection {
     @NotNull private final Map<Object, Object> map;
 
     public void checkForUnknownKey(@NotNull List<String> validProperties) {
-        Map<Object, ?> map = getMap(section);
-        if (map == null) return;
         for (Object mapKey : map.keySet()) {
             if (!validProperties.contains(mapKey.toString())) {
                 startupWarn(String.format("Configuration section \"%s\" has unknown key \"%s\". Valid keys: %s", section, mapKey, validProperties));
@@ -76,12 +75,15 @@ public class ConfigurationSection {
 
     @Nullable
     public List<String> getStringList(@NotNull String path) {
-        return getNullable(path, List.class);
+        List<Object> list = getNullable(path, List.class);
+        if (list == null) return null;
+        return list.stream().map(Object::toString).collect(Collectors.toList());
     }
 
     @NotNull
     public List<String> getStringList(@NotNull String path, @NotNull List<String> defaultValue) {
-        return getRequired(path, defaultValue, List.class);
+        List<Object> list = getRequired(path, defaultValue, List.class);
+        return list.stream().map(Object::toString).collect(Collectors.toList());
     }
 
     @Nullable
@@ -106,7 +108,7 @@ public class ConfigurationSection {
 
     @Nullable
     private <T> T getNullable(@NotNull String path, @NotNull Class<T> clazz) {
-        return evaluateNullable(map.get(path), path, clazz);
+        return evaluateNullable(get(path), path, clazz);
     }
 
     @Nullable
@@ -121,7 +123,7 @@ public class ConfigurationSection {
 
     @NotNull
     private <T> T getRequired(@NotNull String path, @NotNull T defaultValue, @NotNull Class<T> clazz) {
-        return evaluateRequired(map.get(path), path, defaultValue, clazz);
+        return evaluateRequired(get(path), path, defaultValue, clazz);
     }
 
     @NotNull
@@ -137,6 +139,14 @@ public class ConfigurationSection {
             return defaultValue;
         }
         return (T) value;
+    }
+
+    @Nullable
+    private Object get(@NotNull String key) {
+        for (Map.Entry<Object, Object> entry : map.entrySet()) {
+            if (key.equalsIgnoreCase(entry.getKey().toString())) return entry.getValue();
+        }
+        return null;
     }
 
     @NotNull

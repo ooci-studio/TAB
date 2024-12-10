@@ -29,7 +29,6 @@ import me.neznamy.tab.shared.features.PlaceholderManagerImpl;
 import me.neznamy.tab.shared.features.injection.PipelineInjector;
 import me.neznamy.tab.shared.features.types.TabFeature;
 import me.neznamy.tab.shared.hook.LuckPermsHook;
-import me.neznamy.tab.shared.hook.PremiumVanishHook;
 import me.neznamy.tab.shared.placeholders.expansion.EmptyTabExpansion;
 import me.neznamy.tab.shared.placeholders.expansion.TabExpansion;
 import me.neznamy.tab.shared.placeholders.types.PlayerPlaceholderImpl;
@@ -41,6 +40,7 @@ import me.neznamy.tab.shared.platform.impl.AdventureBossBar;
 import me.neznamy.tab.shared.platform.impl.DummyBossBar;
 import me.neznamy.tab.shared.util.PerformanceUtil;
 import me.neznamy.tab.shared.util.ReflectionUtils;
+import net.kyori.adventure.audience.Audience;
 import net.milkbowl.vault.chat.Chat;
 import net.milkbowl.vault.permission.Permission;
 import org.bstats.bukkit.Metrics;
@@ -98,7 +98,7 @@ public class BukkitPlatform implements BackendPlatform {
             //not spigot
         }
         if (Bukkit.getPluginManager().isPluginEnabled("PremiumVanish")) {
-            PremiumVanishHook.setInstance(new BukkitPremiumVanishHook());
+            new BukkitPremiumVanishHook().register();
         }
         PingRetriever.tryLoad();
         ComponentConverter.tryLoad(serverVersion);
@@ -274,7 +274,8 @@ public class BukkitPlatform implements BackendPlatform {
     @Override
     @NotNull
     public BossBar createBossBar(@NotNull TabPlayer player) {
-        if (AdventureBossBar.isAvailable()) return new AdventureBossBar(player);
+        //noinspection ConstantValue
+        if (AdventureBossBar.isAvailable() && Audience.class.isAssignableFrom(Player.class)) return new AdventureBossBar(player);
 
         // 1.9+ server, handle using API, potential 1.8 players are handled by ViaVersion
         if (BukkitReflection.getMinorVersion() >= 9) return new BukkitBossBar((BukkitTabPlayer) player);
@@ -346,17 +347,6 @@ public class BukkitPlatform implements BackendPlatform {
     public void runSync(@NotNull Entity entity, @NotNull Runnable task) {
         Bukkit.getScheduler().runTask(plugin, task);
     }
-
-    // Disabling this check, because vanish plugins might process hiding with a delay on join, resulting
-    // in wrong result when called by TAB, causing vanished players to appear in layout for players who
-    // just joined, in the worst case scenario not hiding shortly after if vanish plugin takes too long.
-    /*
-    @Override
-    public boolean canSee(@NotNull TabPlayer viewer, @NotNull TabPlayer target) {
-        if (BackendPlatform.super.canSee(viewer, target)) return true;
-        return ((BukkitTabPlayer)viewer).getPlayer().canSee(((BukkitTabPlayer)target).getPlayer());
-    }
-    */
 
     /**
      * Converts component to legacy string using bukkit RGB format if supported by both server and client.

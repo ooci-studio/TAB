@@ -1,5 +1,6 @@
 package me.neznamy.tab.platforms.bukkit.nms.converter;
 
+import me.neznamy.tab.platforms.bukkit.BukkitUtils;
 import me.neznamy.tab.shared.ProtocolVersion;
 import me.neznamy.tab.shared.chat.TabComponent;
 import me.neznamy.tab.shared.util.ReflectionUtils;
@@ -20,7 +21,8 @@ public abstract class ComponentConverter {
             ProtocolVersion.V1_21,
             ProtocolVersion.V1_21_1,
             ProtocolVersion.V1_21_2,
-            ProtocolVersion.V1_21_3
+            ProtocolVersion.V1_21_3,
+            ProtocolVersion.V1_21_4
     );
 
     /** Instance of this class */
@@ -52,7 +54,10 @@ public abstract class ComponentConverter {
             } else {
                 INSTANCE = new ReflectionComponentConverter();
             }
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            if (BukkitUtils.PRINT_EXCEPTIONS) {
+                e.printStackTrace();
+            }
         }
     }
 }

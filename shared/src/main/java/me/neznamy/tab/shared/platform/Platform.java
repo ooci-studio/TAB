@@ -1,19 +1,16 @@
 package me.neznamy.tab.shared.platform;
 
 import me.neznamy.tab.shared.GroupManager;
-import me.neznamy.tab.shared.TabConstants;
 import me.neznamy.tab.shared.chat.TabComponent;
 import me.neznamy.tab.shared.features.PerWorldPlayerListConfiguration;
 import me.neznamy.tab.shared.features.injection.PipelineInjector;
 import me.neznamy.tab.shared.features.redis.RedisSupport;
 import me.neznamy.tab.shared.features.types.TabFeature;
-import me.neznamy.tab.shared.hook.PremiumVanishHook;
 import me.neznamy.tab.shared.placeholders.expansion.TabExpansion;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
-import java.util.ConcurrentModificationException;
 
 /**
  * An interface with methods that are called in universal code,
@@ -188,24 +185,4 @@ public interface Platform {
      * @return  {@code true} if server is able to use {@code listOrder} tablist field, {@code false} if not
      */
     boolean supportsListOrder();
-
-    /**
-     * Returns {@code true} if the viewer can see the target, {@code false} otherwise.
-     * This includes all vanish, permission & plugin API checks.
-     *
-     * @param   viewer
-     *          Player who is viewing
-     * @param   target
-     *          Player who is being viewed
-     * @return  {@code true} if can see, {@code false} if not.
-     */
-    default boolean canSee(@NotNull TabPlayer viewer, @NotNull TabPlayer target) {
-        try {
-            if (PremiumVanishHook.getInstance() != null && PremiumVanishHook.getInstance().canSee(viewer, target)) return true;
-        } catch (ConcurrentModificationException e) {
-            // PV error, try again
-            return canSee(viewer, target);
-        }
-        return !target.isVanished() || viewer.hasPermission(TabConstants.Permission.SEE_VANISHED);
-    }
 }
