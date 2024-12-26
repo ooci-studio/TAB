@@ -129,13 +129,16 @@ public abstract class TabComponent {
     }
 
     /**
-     * Returns last color of this component. This value is cached.
+     * Returns last color of this component. This value is cached. If no color is used, WHITE color is returned.
      *
      * @return  Last color of this component
      */
     @NotNull
     public TextColor getLastColor() {
-        if (lastColor == null) lastColor = fetchLastColor();
+        if (lastColor == null) {
+            lastColor = fetchLastColor();
+            if (lastColor == null) lastColor = TextColor.legacy(EnumChatFormat.WHITE);
+        }
         return lastColor;
     }
 
@@ -148,12 +151,13 @@ public abstract class TabComponent {
     public abstract String toLegacyText();
 
     /**
-     * Converts this component into a string. RGB colors are represented as #RRGGBB.
+     * Computes and returns the last used color code in this component.
+     * If no color is present, {@code null} is returned.
      *
-     * @return  String version of this component
+     * @return  Last color of this component, {@code null} if no colors are used
      */
-    @NotNull
-    public abstract String toFlatText();
+    @Nullable
+    protected abstract TextColor fetchLastColor();
 
     /**
      * Converts this component into a string that only consists of text without any formatting.
@@ -161,15 +165,13 @@ public abstract class TabComponent {
      * @return  String containing text of the component and extras
      */
     @NotNull
-    public abstract String toRawText();
-
-    /**
-     * Returns last color of this component.
-     *
-     * @return  Last color of this component
-     */
-    @NotNull
-    protected abstract TextColor fetchLastColor();
+    public String toRawText() {
+        String text = toLegacyText();
+        for (EnumChatFormat format : EnumChatFormat.VALUES) {
+            if (text.contains(format.toString())) text = text.replace(format.toString(), "");
+        }
+        return text;
+    }
 
     /**
      * Returns organized component from colored text
@@ -218,7 +220,7 @@ public abstract class TabComponent {
         component.getModifier().setFont(font);
         for (int i = 0; i < text.length(); i++) {
             char c = text.charAt(i);
-            if (c == EnumChatFormat.COLOR_CHAR) {
+            if (c == '§') {
                 i++;
                 if (i >= text.length()) {
                     break;

@@ -1,19 +1,19 @@
 package me.neznamy.tab.shared.command;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.stream.Collectors;
-
-import me.neznamy.tab.shared.chat.TabComponent;
-import me.neznamy.tab.shared.platform.TabPlayer;
-import me.neznamy.tab.shared.chat.EnumChatFormat;
 import me.neznamy.tab.api.placeholder.Placeholder;
 import me.neznamy.tab.shared.Property;
 import me.neznamy.tab.shared.TAB;
 import me.neznamy.tab.shared.TabConstants;
+import me.neznamy.tab.shared.chat.EnumChatFormat;
+import me.neznamy.tab.shared.chat.TabComponent;
+import me.neznamy.tab.shared.platform.TabPlayer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Handler for "/tab parse &lt;player&gt; &lt;placeholder&gt;" subcommand
@@ -64,13 +64,13 @@ public class ParseCommand extends SubCommand {
             TAB.getInstance().getErrorManager().parseCommandError(replaced, target, e);
             return;
         }
-        TabComponent colored = TabComponent.fromColoredText(EnumChatFormat.color("&3Colored output: &e\"&r" + replaced + "&e\""));
+        TabComponent colored = TabComponent.fromColoredText("&3Colored output: &e\"&r" + replaced + "&e\"");
         if (sender != null) {
             sender.sendMessage(colored);
         } else {
             TAB.getInstance().getPlatform().logInfo(colored);
         }
-        sendRawMessage(sender, EnumChatFormat.color("&3Raw colors: &e\"&r") + EnumChatFormat.decolor(replaced) + EnumChatFormat.color("&e\""));
+        sendRawMessage(sender, EnumChatFormat.color("&3Raw colors: &e\"&r") + replaced.replace('§', '&') + EnumChatFormat.color("&e\""));
         sendMessage(sender, "&3Output length: &e" + replaced.length() + " &3characters");
     }
 

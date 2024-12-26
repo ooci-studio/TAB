@@ -3,6 +3,7 @@ package me.neznamy.tab.shared.chat;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Simple component with only text using legacy colors and nothing else.
@@ -21,28 +22,14 @@ public class SimpleComponent extends TabComponent {
     }
 
     @Override
-    @NotNull
-    public String toFlatText() {
-        return text;
-    }
-
-    @Override
-    @NotNull
-    public String toRawText() {
-        return text;
-    }
-
-    @Override
-    @NotNull
+    @Nullable
     protected TextColor fetchLastColor() {
-        if (text.isEmpty()) return TextColor.legacy(EnumChatFormat.WHITE);
-        String last = EnumChatFormat.getLastColors(text);
-        if (!last.isEmpty()) {
-            char c = last.toCharArray()[1];
-            for (EnumChatFormat e : EnumChatFormat.VALUES) {
-                if (e.getCharacter() == c) return TextColor.legacy(e);
-            }
+        char[] chars = text.toCharArray();
+        for (int index = chars.length - 2; index >= 0; index--) {
+            if (chars[index] != '§') continue;
+            EnumChatFormat color = EnumChatFormat.getByChar(chars[index + 1]);
+            if (color != null) return TextColor.legacy(color);
         }
-        return TextColor.legacy(EnumChatFormat.WHITE);
+        return null;
     }
 }
