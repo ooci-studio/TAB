@@ -5,7 +5,7 @@ import me.clip.placeholderapi.PlaceholderAPI;
 import me.neznamy.tab.platforms.bukkit.features.PerWorldPlayerList;
 import me.neznamy.tab.shared.TAB;
 import me.neznamy.tab.shared.TabConstants;
-import me.neznamy.tab.shared.chat.TabComponent;
+import me.neznamy.chat.component.SimpleTextComponent;
 import me.neznamy.tab.shared.cpu.TimedCaughtTask;
 import me.neznamy.tab.shared.placeholders.types.PlayerPlaceholderImpl;
 import me.neznamy.tab.shared.platform.TabPlayer;
@@ -38,7 +38,7 @@ public class FoliaPlatform extends BukkitPlatform {
         super.loadPlayers();
 
         // Values are never updated in the API, warn users
-        logWarn(TabComponent.fromColoredText("Folia never updates MSPT and TPS values in the API, making " +
+        logWarn(SimpleTextComponent.text("Folia never updates MSPT and TPS values in the API, making " +
                 "%mspt% and %tps% return the default values (0 and 20)."));
 
         // Folia never calls PlayerChangedWorldEvent, this is a workaround
@@ -57,10 +57,10 @@ public class FoliaPlatform extends BukkitPlatform {
     }
 
     @Override
-    public void registerSyncPlaceholder(@NotNull String identifier, int refresh) {
+    public void registerSyncPlaceholder(@NotNull String identifier) {
         String syncedPlaceholder = "%" + identifier.substring(6);
         PlayerPlaceholderImpl[] ppl = new PlayerPlaceholderImpl[1];
-        ppl[0] = TAB.getInstance().getPlaceholderManager().registerPlayerPlaceholder(identifier, refresh, p -> {
+        ppl[0] = TAB.getInstance().getPlaceholderManager().registerPlayerPlaceholder(identifier, p -> {
             runSync((Entity) p.getPlayer(), () -> {
                 long time = System.nanoTime();
                 String output = isPlaceholderAPI() ? PlaceholderAPI.setPlaceholders((Player) p.getPlayer(), syncedPlaceholder) : identifier;

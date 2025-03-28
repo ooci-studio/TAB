@@ -2,7 +2,6 @@ package me.neznamy.tab.shared.features.scoreboard;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import me.neznamy.tab.shared.TAB;
 import me.neznamy.tab.shared.config.file.ConfigurationSection;
 import me.neznamy.tab.shared.features.PlaceholderManagerImpl;
 import org.jetbrains.annotations.NotNull;
@@ -66,14 +65,14 @@ public class ScoreboardConfiguration {
     private static void checkChain(@NotNull ConfigurationSection section, Map<String, ScoreboardDefinition> scoreboards) {
         String noConditionScoreboard = null;
         for (Map.Entry<String, ScoreboardDefinition> entry : scoreboards.entrySet()) {
-            if (entry.getValue().displayCondition == null) {
-                noConditionScoreboard = entry.getKey();
-            } else if (noConditionScoreboard != null) {
+            if (noConditionScoreboard != null) {
                 section.startupWarn("Scoreboard \"" + noConditionScoreboard + "\" has no display condition set, however, there is" +
                         " another scoreboard in the chain (" + entry.getKey() + "). Scoreboards are checked from top to bottom" +
                         " until a scoreboard with meeting condition or no condition is found. Because of this, the scoreboard (" +
                         entry.getKey() + ") after the no-condition scoreboard (" + noConditionScoreboard + ") will never be displayed. " +
                         "Unless this is intentional to externally display the scoreboard (commands, API), this is a mistake.");
+            } else if (entry.getValue().displayCondition == null) {
+                noConditionScoreboard = entry.getKey();
             }
         }
     }
@@ -119,19 +118,6 @@ public class ScoreboardConfiguration {
                 section.startupWarn(String.format("Scoreboard \"%s\" has %d defined lines, at least %d of which are permanently visible. " +
                                 "However, the client only displays up to 15 lines, with any lines below them not being displayed.",
                         name, lines.size(), alwaysVisibleLines));
-            }
-
-            // Check if using NumberFormat on <1.20.3 server
-            boolean found = false;
-            for (String line : lines) {
-                if (line.contains("||")) {
-                    found = true;
-                    break;
-                }
-            }
-            if (found && !TAB.getInstance().getPlatform().supportsNumberFormat()) {
-                section.startupWarn("Scoreboard \"" + name + "\" is using right-side text alignment (using ||) in the lines, however, your server does not " +
-                        "support this feature. It was added into the game in version 1.20.3. Any text defined after || in lines will not be displayed.");
             }
 
             return new ScoreboardDefinition(

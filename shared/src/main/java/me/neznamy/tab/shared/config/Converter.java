@@ -1,8 +1,9 @@
 package me.neznamy.tab.shared.config;
 
+import me.neznamy.chat.TextColor;
+import me.neznamy.chat.component.TextComponent;
 import me.neznamy.tab.shared.TAB;
 import me.neznamy.tab.shared.TabConstants;
-import me.neznamy.tab.shared.chat.TabComponent;
 import me.neznamy.tab.shared.config.file.ConfigurationFile;
 import me.neznamy.tab.shared.config.file.YamlConfigurationFile;
 import org.jetbrains.annotations.NotNull;
@@ -31,7 +32,7 @@ public class Converter {
      */
     public void convert2810to290(@NotNull ConfigurationFile animations) {
         if (animations.getValues().size() == 1 && animations.getValues().containsKey("animations")) {
-            TAB.getInstance().getPlatform().logInfo(TabComponent.fromColoredText("&ePerforming configuration conversion from 2.8.10 to 2.9.0"));
+            TAB.getInstance().getPlatform().logInfo(new TextComponent("Performing configuration conversion from 2.8.10 to 2.9.0", TextColor.YELLOW));
             animations.setValues(animations.getMap("animations"));
             animations.save();
         }
@@ -48,7 +49,7 @@ public class Converter {
      */
     public void convert292to300(@NotNull ConfigurationFile currentConfig) throws IOException {
         if (!currentConfig.hasConfigOption("change-nametag-prefix-suffix")) return;
-        TAB.getInstance().getPlatform().logInfo(TabComponent.fromColoredText("&ePerforming configuration conversion from 2.9.2 to 3.0.0"));
+        TAB.getInstance().getPlatform().logInfo(new TextComponent("Performing configuration conversion from 2.9.2 to 3.0.0", TextColor.YELLOW));
 
         File folder = TAB.getInstance().getDataFolder();
         moveOldFiles();
@@ -349,7 +350,7 @@ public class Converter {
      */
     public void convert301to302(@NotNull ConfigurationFile config) {
         if (config.removeOption("placeholders.remove-strings")) {
-            TAB.getInstance().getPlatform().logInfo(TabComponent.fromColoredText("&ePerforming configuration conversion from 3.0.1 to 3.0.2"));
+            TAB.getInstance().getPlatform().logInfo(new TextComponent("Performing configuration conversion from 3.0.1 to 3.0.2", TextColor.YELLOW));
         }
     }
 
@@ -374,7 +375,7 @@ public class Converter {
     public void convert332to400(@NotNull ConfigurationFile config) throws IOException {
         // Removed config options
         if (config.hasConfigOption("fix-pet-names")) {
-            TAB.getInstance().getPlatform().logInfo(TabComponent.fromColoredText("&ePerforming configuration conversion from 3.3.2 to 4.0.0"));
+            TAB.getInstance().getPlatform().logInfo(new TextComponent("Performing configuration conversion from 3.3.2 to 4.0.0", TextColor.YELLOW));
             config.set("fix-pet-names", null);
             config.set("bossbar.disable-in-worlds", null);
             config.set("bossbar.disable-in-servers", null);
@@ -449,7 +450,7 @@ public class Converter {
      */
     public void convert409to410(@NotNull ConfigurationFile config) {
         if (config.hasConfigOption("yellow-number-in-tablist")) {
-            TAB.getInstance().getPlatform().logInfo(TabComponent.fromColoredText("&ePerforming configuration conversion from 4.0.9 to 4.1.0"));
+            TAB.getInstance().getPlatform().logInfo(new TextComponent("Performing configuration conversion from 4.0.9 to 4.1.0", TextColor.YELLOW));
             Map<Object, Object> section = config.getMap("yellow-number-in-tablist");
             section.put("fancy-value", "&7Ping: %ping%");
             config.set("yellow-number-in-tablist", null);
@@ -470,7 +471,7 @@ public class Converter {
      */
     public void convert419to500(@NotNull ConfigurationFile config) {
         if (config.removeOption("scoreboard-teams.unlimited-nametag-mode")) {
-            TAB.getInstance().getPlatform().logInfo(TabComponent.fromColoredText("&ePerforming configuration conversion from 4.1.9 to 5.0.0"));
+            TAB.getInstance().getPlatform().logInfo(new TextComponent("Performing configuration conversion from 4.1.9 to 5.0.0", TextColor.YELLOW));
             config.removeOption("scoreboard.respect-other-plugins");
         }
         if (!config.hasConfigOption("global-playerlist.update-latency")) {
@@ -487,10 +488,34 @@ public class Converter {
      */
     public void convert501to502(@NotNull ConfigurationFile config) {
         if (config.rename("belowname-objective.number", "belowname-objective.value")) {
-            TAB.getInstance().getPlatform().logInfo(TabComponent.fromColoredText("&ePerforming configuration conversion from 5.0.1 to 5.0.2"));
+            TAB.getInstance().getPlatform().logInfo(new TextComponent("Performing configuration conversion from 5.0.1 to 5.0.2", TextColor.YELLOW));
         }
         config.rename("belowname-objective.text", "belowname-objective.title");
         config.rename("belowname-objective.fancy-display-players", "belowname-objective.fancy-value");
         config.rename("belowname-objective.fancy-display-default", "belowname-objective.fancy-value-default");
+    }
+
+    /**
+     * Converts config from 5.0.7 to 5.1.0.
+     * This update:
+     * - Creates the option proxy-support and removes the old enable-redisbungee-support configuration.
+     * - Renames placeholderapi-refresh-intervals to placeholder-refresh-intervals
+     * - Adds new playerlist objective options
+     *
+     * @param   config
+     *          Config file
+     */
+    public void convert507to510(@NotNull ConfigurationFile config) {
+        if (config.rename("enable-redisbungee-support", "proxy-support.enabled")) {
+            TAB.getInstance().getPlatform().logInfo(new TextComponent("Performing configuration conversion from 5.0.7 to 5.1.0", TextColor.YELLOW));
+            config.set("proxy-support.type", "PLUGIN");
+            config.set("proxy-support.plugin.name", "RedisBungee");
+            config.set("proxy-support.redis.url", "redis://:password@localhost:6379/0");
+            config.set("proxy-support.rabbitmq.exchange", "plugin");
+            config.set("proxy-support.rabbitmq.url", "amqp://guest:guest@localhost:5672/%2F");
+        }
+        config.rename("placeholderapi-refresh-intervals", "placeholder-refresh-intervals");
+        config.setIfMissing("playerlist-objective.title", "Java Edition is better");
+        config.setIfMissing("playerlist-objective.render-type", Arrays.asList("%health%", "%player_health%", "%player_health_rounded%").contains(config.getString("playerlist-objective.value", "")) ? "HEARTS" : "INTEGER");
     }
 }

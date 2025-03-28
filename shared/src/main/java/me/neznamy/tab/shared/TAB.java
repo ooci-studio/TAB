@@ -2,6 +2,9 @@ package me.neznamy.tab.shared;
 
 import lombok.Getter;
 import lombok.Setter;
+import me.neznamy.chat.TextColor;
+import me.neznamy.chat.component.TabComponent;
+import me.neznamy.chat.component.TextComponent;
 import me.neznamy.tab.api.TabAPI;
 import me.neznamy.tab.api.bossbar.BossBarManager;
 import me.neznamy.tab.api.scoreboard.ScoreboardManager;
@@ -9,7 +12,6 @@ import me.neznamy.tab.api.tablist.HeaderFooterManager;
 import me.neznamy.tab.api.tablist.SortingManager;
 import me.neznamy.tab.api.tablist.TabListFormatManager;
 import me.neznamy.tab.api.tablist.layout.LayoutManager;
-import me.neznamy.tab.shared.chat.TabComponent;
 import me.neznamy.tab.shared.command.DisabledCommand;
 import me.neznamy.tab.shared.command.TabCommand;
 import me.neznamy.tab.shared.config.Configs;
@@ -129,6 +131,7 @@ public class TAB extends TabAPI {
      */
     private TAB(@NotNull Platform platform) {
         this.platform = platform;
+        TabComponent.CONVERT_FUNCTION = platform::convertComponent;
         dataFolder = platform.getDataFolder();
         errorManager = new ErrorManager(dataFolder);
         try {
@@ -143,6 +146,17 @@ public class TAB extends TabAPI {
         if (platform instanceof ProxyPlatform) {
             ((ProxyPlatform) platform).registerChannel();
         }
+    }
+
+    /**
+     * Check if the provided TabList UUID is registered as connected player.
+     *
+     * @param   tabListId
+     *          TabList id of player
+     * @return  true if player is connected, false otherwise.
+     */
+    public boolean isPlayerConnected(UUID tabListId) {
+        return playersByTabListId.containsKey(tabListId);
     }
 
     /**
@@ -177,18 +191,18 @@ public class TAB extends TabAPI {
             groupManager = platform.detectPermissionPlugin();
             platform.registerPlaceholders();
             featureManager.loadFeaturesFromConfig();
+            pluginDisabled = false;
             platform.loadPlayers();
             command = new TabCommand();
             featureManager.load();
             for (TabPlayer p : onlinePlayers) p.markAsLoaded(false);
             if (eventBus != null) eventBus.fire(TabLoadEventImpl.getInstance());
-            pluginDisabled = false;
             cpu.enable();
             configHelper.startup().printWarnCount();
-            platform.logInfo(TabComponent.fromColoredText("&aEnabled in " + (System.currentTimeMillis()-time) + "ms"));
+            platform.logInfo(new TextComponent("Enabled in " + (System.currentTimeMillis()-time) + "ms", TextColor.GREEN));
             return configuration.getMessages().getReloadSuccess();
         } catch (YAMLException e) {
-            platform.logWarn(TabComponent.fromColoredText("&cDid not enable due to a broken configuration file."));
+            platform.logWarn(new TextComponent("Did not enable due to a broken configuration file.", TextColor.RED));
             kill();
             return (configuration == null ? "&4Failed to reload, file %file% has broken syntax. Check console for more info."
                     : configuration.getMessages().getReloadFailBrokenFile()).replace("%file%", brokenFile);
@@ -209,7 +223,7 @@ public class TAB extends TabAPI {
             long time = System.currentTimeMillis();
             if (configuration.getMysql() != null) configuration.getMysql().closeConnection();
             featureManager.unload();
-            platform.logInfo(TabComponent.fromColoredText("&aDisabled in " + (System.currentTimeMillis()-time) + "ms"));
+            platform.logInfo(new TextComponent("Disabled in " + (System.currentTimeMillis()-time) + "ms", TextColor.GREEN));
         } catch (Throwable e) {
             errorManager.criticalError("Failed to disable", e);
         }
@@ -317,6 +331,6 @@ public class TAB extends TabAPI {
      */
     public void debug(@NotNull String message) {
         if (configuration != null && configuration.getConfig().isDebugMode())
-            platform.logInfo(TabComponent.fromColoredText("&9[DEBUG] " + message));
+            platform.logInfo(new TextComponent("[DEBUG] " + message, TextColor.BLUE));
     }
 }

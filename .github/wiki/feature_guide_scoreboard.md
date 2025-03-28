@@ -18,7 +18,7 @@
   * [Toggling scoreboard visibility](#toggling-scoreboard-visibility)
   * [Announcing a scoreboard](#announcing-a-scoreboard)
 * [Examples](#examples)
-  * [Example 1 - per-world scoreboards](#example-1---per-world-scoreboards)
+  * [Example 1 - Per-world scoreboards](#example-1---per-world-scoreboards)
   * [Example 2 - Periodical scoreboard switching](#example-2---periodical-scoreboard-switching)
   * [Example 3 - Per-version scoreboards](#example-3---per-version-scoreboards)
 
@@ -52,7 +52,7 @@ Will give you the following:
 
 The right side text will not be visible at 1.20.2 and lower, and numbers will be displayed instead.
 To properly see the right side, not only the client has to be 1.20.3+, but the server as well,
-since the plugin cannot send a packet that does not exist (on older versions). 
+since the plugin cannot send a packet that does not exist (on older versions).
 Proxies always include new content and therefore count as the latest version.
 This can be used to send new content to new players while having an outdated server version.
 
@@ -107,21 +107,21 @@ name - name of scoreboard to be displayed
 time - number of seconds to display the scoreboard for
 
 # Additional settings
-| Option name | Default value | Description |
-| ------------- | ------------- | ------------- |
-| enabled | false | Enables / Disables the feature |
-| toggle-command | /sb | Command that can be used to toggle scoreboard for the player running the command. Players need `tab.scoreboard.toggle` permission to use it. <br />**Note:** This command will not appear in command auto-complete, because it's not a real registered command. Registered commands must be defined in plugin jar directly and cannot be dynamic. If you want to solve this, you can try getting a dummy private plugin made which registers that command. |
-| remember-toggle-choice | false | When enabled, toggling decision is saved into a file to remember it even after reloads/restarts/reconnects |
-| hidden-by-default | false | If enabled, scoreboard will automatically be hidden on join until toggle command is used to show it. |
-| use-numbers | false | If enabled, numbers 1-15 will be used in the scoreboard. If disabled, `static-number` is shown everywhere. |
-| static-number | 0 | If `use-numbers` is disabled, this is number to be in all lines. |
-| delay-on-join-milliseconds | 0 | Delay in milliseconds to send scoreboard after joining. |
+| Option name                | Default value | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+|----------------------------|---------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| enabled                    | false         | Enables / Disables the feature                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| toggle-command             | /sb           | Command that can be used to toggle scoreboard for the player running the command. Players need `tab.scoreboard.toggle` permission to use it. <br />**Note:** This command will not appear in command auto-complete, because it's not a real registered command. Registered commands must be defined in plugin jar directly and cannot be dynamic. If you want to solve this, you can try getting a dummy private plugin made which registers that command. |
+| remember-toggle-choice     | false         | When enabled, toggling decision is saved into a file to remember it even after reloads/restarts/reconnects                                                                                                                                                                                                                                                                                                                                                 |
+| hidden-by-default          | false         | If enabled, scoreboard will automatically be hidden on join until toggle command is used to show it.                                                                                                                                                                                                                                                                                                                                                       |
+| use-numbers                | false         | If enabled, numbers 1-15 will be used in the scoreboard. If disabled, `static-number` is shown everywhere.                                                                                                                                                                                                                                                                                                                                                 |
+| static-number              | 0             | If `use-numbers` is disabled, this is number to be in all lines.                                                                                                                                                                                                                                                                                                                                                                                           |
+| delay-on-join-milliseconds | 0             | Delay in milliseconds to send scoreboard after joining.                                                                                                                                                                                                                                                                                                                                                                                                    |
 
 # Limitations
-* The title is limited to 32 characters (including color codes) on <1.13.
-* Line length is limited to 28 characters (including color codes) on <1.13 (68 on lines with static text / [Longer lines](#longer-lines)).
-* Only displays up to 15 lines.
-* The red numbers on the right really cannot be removed from the plugin side (a client modification / resource pack is necessary) at 1.20.2 and lower. They no longer appear on 1.20.3+, and instead any text can be configured (see above).
+* [1.5 - 1.12.2] The title is limited to 32 characters (including color codes).
+* [1.5 - 1.12.2] Line length is limited to 28 characters (including color codes) (68 on lines with static text / [Longer lines](#longer-lines)).
+* [1.5 - 1.20.2] The red numbers on the right really cannot be removed from the plugin side (a client modification / resource pack is necessary).
+* The client only displays up to 15 lines. If a plugin sends more, only the top 15 scores will be displayed. Changing this would require a client modification.
 
 # Longer lines
 To make sure the scoreboard never flickers, it's only using prefix/suffix components to display text.
@@ -215,7 +215,7 @@ which will look up a scoreboard with the given `String` name,
 and if one is found, send it to all players for the given `int` ticks.
 
 # Examples
-## Example 1 - per-world scoreboards
+## Example 1 - Per-world scoreboards
 We will be using a condition of "equals" (=) type and check for output of `%world%` placeholder.
 If condition is met, it means player is in that world and the scoreboard is displayed.
 If not, check for the next scoreboard's condition.
@@ -246,7 +246,11 @@ If none of the conditions are met, display the default scoreboard.
       lines:
       - 'You are not in any of the worlds listed above'
 ```
-*Note: This is just an example, the plugin is not limited to displaying scoreboard only per world. If you want per server scoreboards on BungeeCord, use %server% with server names. If you want worldguard regions, use %worldguard_region_name% with region names. This works for any placeholder offered by the plugin or by PlaceholderAPI.*
+> [!NOTE]
+> This is just an example, the plugin is not limited to displaying scoreboard only per world.
+> If you want per server scoreboards on proxy, use %server% with server names.
+> If you want worldguard regions, use %worldguard_region_name% with region names.
+> This works for any placeholder offered by the plugin or by PlaceholderAPI.
 
 ## Example 2 - Periodical scoreboard switching
 We can use [animations](https://github.com/NEZNAMY/TAB/wiki/Animations) to make the plugin switch between scoreboards using display condition. Let's say we want to switch between 2 scoreboards. First, we create an animation:  

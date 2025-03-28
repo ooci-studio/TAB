@@ -2,7 +2,8 @@ package me.neznamy.tab.platforms.bukkit.tablist;
 
 import lombok.NonNull;
 import me.neznamy.tab.platforms.bukkit.BukkitTabPlayer;
-import me.neznamy.tab.shared.chat.TabComponent;
+import me.neznamy.chat.component.TabComponent;
+import me.neznamy.tab.shared.platform.decorators.TrackedTabList;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.Nullable;
@@ -12,7 +13,7 @@ import java.util.UUID;
 /**
  * TabList handler using the almighty Bukkit API.
  */
-public class BukkitTabList extends TabListBase<String> {
+public class BukkitTabList extends TrackedTabList<BukkitTabPlayer> {
 
     /**
      * Constructs new instance with given player.
@@ -31,10 +32,10 @@ public class BukkitTabList extends TabListBase<String> {
 
     @Override
     @SuppressWarnings("deprecation")
-    public void updateDisplayName(@NonNull UUID entry, @Nullable String displayName) {
+    public void updateDisplayName0(@NonNull UUID entry, @Nullable TabComponent displayName) {
         Player p = Bukkit.getPlayer(entry);
         if (p == null) return;
-        p.setPlayerListName(displayName);
+        p.setPlayerListName(displayName == null ? null : displayName.toLegacyText());
     }
 
     @Override
@@ -63,13 +64,23 @@ public class BukkitTabList extends TabListBase<String> {
     }
 
     @Override
-    public void addEntry(@NonNull UUID id, @NonNull String name, @Nullable Skin skin, boolean listed, int latency,
-                         int gameMode, @Nullable String displayName, int listOrder, boolean showHat) {
+    public void addEntry0(@NonNull Entry entry) {
         // Shrug
     }
 
     @Override
-    public String toComponent(@NonNull TabComponent component) {
-        return player.getPlatform().toBukkitFormat(component, true);
+    public boolean containsEntry(@NonNull UUID entry) {
+        return true;
+    }
+
+    @Override
+    public void setPlayerListHeaderFooter(@NonNull TabComponent header, @NonNull TabComponent footer) {
+        player.getPlatform().getHeaderFooter().set(player, header, footer);
+    }
+
+    @Override
+    @Nullable
+    public Skin getSkin() {
+        return null; // Shrug
     }
 }

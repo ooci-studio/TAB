@@ -1,7 +1,7 @@
 package me.neznamy.tab.shared.platform;
 
 import lombok.*;
-import me.neznamy.tab.shared.chat.TabComponent;
+import me.neznamy.chat.component.TabComponent;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -109,6 +109,14 @@ public interface TabList {
      *          Footer to use
      */
     void setPlayerListHeaderFooter(@NonNull TabComponent header, @NonNull TabComponent footer);
+
+    /**
+     * Returns player's skin data
+     *
+     * @return  player's skin
+     */
+    @Nullable
+    Skin getSkin();
 
     /**
      * TabList action.

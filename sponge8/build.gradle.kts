@@ -1,7 +1,7 @@
 import org.spongepowered.gradle.plugin.config.PluginLoaders
 
 plugins {
-    id("org.spongepowered.gradle.plugin") version "2.0.2"
+    id("org.spongepowered.gradle.plugin") version "2.3.0"
 }
 
 repositories {
@@ -17,8 +17,12 @@ dependencies {
     implementation("org.bstats:bstats-sponge:3.1.0")
 }
 
+tasks.compileJava {
+    options.release.set(21)
+}
+
 sponge {
-    apiVersion("8.0.0")
+    apiVersion("12.0.0")
     loader {
         name(PluginLoaders.JAVA_PLAIN)
         version("1.0")

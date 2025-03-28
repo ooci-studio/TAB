@@ -1,8 +1,8 @@
 package me.neznamy.tab.shared.hook;
 
-import me.neznamy.tab.shared.chat.AdventureComponent;
-import me.neznamy.tab.shared.chat.TabComponent;
-import me.neznamy.tab.shared.util.ReflectionUtils;
+import me.neznamy.chat.component.TabComponent;
+import me.neznamy.chat.hook.AdventureHook;
+import me.neznamy.tab.shared.TAB;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -14,9 +14,25 @@ public class MiniMessageHook {
 
     /** Minimessage deserializer with disabled component post-processing */
     @Nullable
-    private static final MiniMessage mm = ReflectionUtils.classExists("net.kyori.adventure.text.minimessage.MiniMessage") &&
-            ReflectionUtils.classExists("net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer") ?
-            MiniMessage.builder().postProcessor(c->c).build() : null;
+    private static final MiniMessage mm = createMiniMessage();
+
+    @Nullable
+    private static MiniMessage createMiniMessage() {
+        try {
+            return MiniMessage.builder().postProcessor(c -> c).build();
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
+    /**
+     * Returns {@code true} if MiniMessage is available on the server, {@code false} if not.
+     *
+     * @return  {@code true} if MiniMessage is available on the server, {@code false} if not
+     */
+    public static boolean isAvailable() {
+        return mm != null;
+    }
 
     /**
      * Attempts to parse the text into an adventure component using MiniMessage syntax. If MiniMessage is
@@ -29,11 +45,14 @@ public class MiniMessageHook {
     @Nullable
     public static TabComponent parseText(@NotNull String text) {
         if (mm == null) return null;
-        if (!text.contains("<")) return null; // User did not even attempt to use MiniMessage
-        if (text.contains("§")) return null;
+        if (text.contains("§")) {
+            TAB.getInstance().getErrorManager().printError("Cannot convert \"" + text + "\" into a MiniMessage component, because it contains legacy colors", null);
+            return null;
+        }
         try {
-            return new AdventureComponent(mm.deserialize(text));
-        } catch (Throwable ignored) {
+            return AdventureHook.convert(mm.deserialize(text));
+        } catch (Throwable t) {
+            TAB.getInstance().getErrorManager().printError("Failed to convert \"" + text + "\" into a MiniMessage component", t);
             return null;
         }
     }

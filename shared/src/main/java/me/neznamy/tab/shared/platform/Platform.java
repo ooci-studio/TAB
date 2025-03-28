@@ -1,10 +1,10 @@
 package me.neznamy.tab.shared.platform;
 
+import me.neznamy.chat.component.TabComponent;
 import me.neznamy.tab.shared.GroupManager;
-import me.neznamy.tab.shared.chat.TabComponent;
 import me.neznamy.tab.shared.features.PerWorldPlayerListConfiguration;
 import me.neznamy.tab.shared.features.injection.PipelineInjector;
-import me.neznamy.tab.shared.features.redis.RedisSupport;
+import me.neznamy.tab.shared.features.proxy.ProxySupport;
 import me.neznamy.tab.shared.features.types.TabFeature;
 import me.neznamy.tab.shared.placeholders.expansion.TabExpansion;
 import org.jetbrains.annotations.NotNull;
@@ -59,11 +59,13 @@ public interface Platform {
     @NotNull TabExpansion createTabExpansion();
 
     /**
-     * Creates RedisSupport feature, registers listeners and returns it
+     * Creates ProxySupport feature, registers listeners and returns it
      *
+     * @param   plugin
+     *          Proxy plugin to use
      * @return  Created instance
      */
-    @Nullable RedisSupport getRedisSupport();
+    @Nullable ProxySupport getProxySupport(@NotNull String plugin);
 
     /**
      * Returns per world player list feature handler.
@@ -129,16 +131,14 @@ public interface Platform {
     boolean isProxy();
 
     /**
-     * Converts TAB component into platform's component.
+     * Converts thhe TAB component into platform's component.
      *
      * @param   component
      *          Component to convert
-     * @param   modern
-     *          Whether clients supports RGB or not
      * @return  Converted component
      */
     @NotNull
-    Object convertComponent(@NotNull TabComponent component, boolean modern);
+    Object convertComponent(@NotNull TabComponent component);
 
     /**
      * Creates new scoreboard instance for given player.
@@ -171,18 +171,27 @@ public interface Platform {
     TabList createTabList(@NotNull TabPlayer player);
 
     /**
-     * Returns {@code true} if server is able to use {@code NumberFormat} scoreboard feature (1.20.3+). Returns {@code false}
-     * if server is running below this version (backend) or server API does not support it yet.
+     * Returns {@code true} if server has a scoreboard implementation, {@code false} if not.
      *
-     * @return  {@code true} if server is able to use {@code NumberFormat} scoreboard feature, {@code false} if not
+     * @return   {@code true} if server has a scoreboard implementation, {@code false} if not
      */
-    boolean supportsNumberFormat();
+    boolean supportsScoreboards();
 
     /**
-     * Returns {@code true} if server is able to use {@code listOrder} field in tablist (1.21.2+). Returns {@code false}
-     * if server is running below this version (backend) or server API does not support it yet.
+     * Returns {@code true} if the server is safe from being affected by the packetevents bug with limitations, {@code false} if not.
      *
-     * @return  {@code true} if server is able to use {@code listOrder} tablist field, {@code false} if not
+     * @return  {@code true} if server is safe, {@code false} if not
      */
-    boolean supportsListOrder();
+    default boolean isSafeFromPacketEventsBug() {
+        return true;
+    }
+
+    /**
+     * Returns the command string used by this platform without "/"
+     * prefix, such as "tab" on backend and "btab" on BungeeCord.
+     *
+     * @return  command string on this platform without "/" prefix
+     */
+    @NotNull
+    String getCommand();
 }

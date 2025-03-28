@@ -7,7 +7,7 @@ import me.neznamy.tab.platforms.bukkit.BukkitTabPlayer;
 import me.neznamy.tab.platforms.bukkit.nms.BukkitReflection;
 import me.neznamy.tab.shared.Limitations;
 import me.neznamy.tab.shared.ProtocolVersion;
-import me.neznamy.tab.shared.chat.TabComponent;
+import me.neznamy.chat.component.TabComponent;
 import me.neznamy.tab.shared.platform.decorators.SafeScoreboard;
 import me.neznamy.tab.shared.util.ReflectionUtils;
 import org.bukkit.Bukkit;
@@ -274,7 +274,7 @@ public class BukkitScoreboard extends SafeScoreboard<BukkitTabPlayer> {
      */
     @NotNull
     private String transform(@NonNull TabComponent text, int maxLengthModern, int maxLengthLegacy) {
-        String transformed = player.getPlatform().toBukkitFormat(text, player.getVersion().supportsRGB());
+        String transformed = player.getPlatform().toBukkitFormat(text);
         if (player.getPlatform().getServerVersion().supportsRGB() && maxLengthModern < TITLE_LIMIT_MODERN) { // Scoreboard title is not stripping colors
             while (ChatColor.stripColor(transformed).length() > maxLengthModern)
                 transformed = transformed.substring(0, transformed.length()-1);

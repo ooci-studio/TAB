@@ -3,6 +3,7 @@ package me.neznamy.tab.shared.features.scoreboard.lines;
 import lombok.NonNull;
 import me.neznamy.tab.shared.Limitations;
 import me.neznamy.tab.shared.Property;
+import me.neznamy.tab.shared.TAB;
 import me.neznamy.tab.shared.platform.TabPlayer;
 import me.neznamy.tab.shared.features.scoreboard.ScoreboardImpl;
 import org.jetbrains.annotations.NotNull;
@@ -35,12 +36,12 @@ public class LongLine extends ScoreboardLine {
         if (refreshed.scoreboardData.activeScoreboard != parent) return; //player has different scoreboard displayed
         Property lineProperty = refreshed.scoreboardData.lineProperties.get(this);
         if (lineProperty.update()) {
-            if (refreshed.getVersion().getMinorVersion() >= 13) {
+            if (refreshed.getVersion().getMinorVersion() >= 13 && !TAB.getInstance().getConfiguration().getConfig().isPacketEventsCompensation()) {
                 updateTeam(refreshed, lineProperty.get(), "");
             } else {
                 removeLine(refreshed, refreshed.scoreboardData.lineNameProperties.get(this).get());
                 String[] values = splitText(
-                        getPlayerName(lineNumber),
+                        forcedPlayerNameStart,
                         parent.getManager().getCache().get(lineProperty.get()).toLegacyText(),
                         refreshed.getVersion().getMinorVersion() >= 8 ? Limitations.SCOREBOARD_SCORE_LENGTH_1_8 : Limitations.SCOREBOARD_SCORE_LENGTH_1_7
                 );
@@ -55,12 +56,12 @@ public class LongLine extends ScoreboardLine {
         p.scoreboardData.lineProperties.put(this, new Property(this, p, text));
         getScoreRefresher().registerProperties(p);
         String value = p.scoreboardData.lineProperties.get(this).get();
-        if (p.getVersion().getMinorVersion() >= 13) {
-            addLine(p, playerName, value, "");
-            p.scoreboardData.lineNameProperties.put(this, new Property(this, p, playerName));
+        if (p.getVersion().getMinorVersion() >= 13 && !TAB.getInstance().getConfiguration().getConfig().isPacketEventsCompensation()) {
+            addLine(p, forcedPlayerNameStart, value, "");
+            p.scoreboardData.lineNameProperties.put(this, new Property(this, p, forcedPlayerNameStart));
         } else {
             String[] values = splitText(
-                    playerName,
+                    forcedPlayerNameStart,
                     parent.getManager().getCache().get(value).toLegacyText(),
                     p.getVersion().getMinorVersion() >= 8 ? Limitations.SCOREBOARD_SCORE_LENGTH_1_8 : Limitations.SCOREBOARD_SCORE_LENGTH_1_7
             );
@@ -87,6 +88,7 @@ public class LongLine extends ScoreboardLine {
     }
 
     @Override
+    @NotNull
     public String getPlayerName(@NonNull TabPlayer viewer) {
         return viewer.scoreboardData.lineNameProperties.get(this).get();
     }

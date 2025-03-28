@@ -13,6 +13,7 @@ import net.minecraft.network.protocol.game.*;
 import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Scoreboard;
 import net.minecraft.world.scores.criteria.ObjectiveCriteria;
+import net.minecraft.world.scores.criteria.ObjectiveCriteria.RenderType;
 import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.jetbrains.annotations.NotNull;
 
@@ -21,7 +22,7 @@ import java.util.Collections;
 import java.util.Optional;
 
 /**
- * Scoreboard implementation using direct mojang-mapped code for versions 1.20.5+.
+ * Scoreboard implementation using direct mojang-mapped code.
  */
 @SuppressWarnings("unused") // Used via reflection
 public class PaperPacketScoreboard extends SafeScoreboard<BukkitTabPlayer> {
@@ -58,8 +59,8 @@ public class PaperPacketScoreboard extends SafeScoreboard<BukkitTabPlayer> {
                 dummyScoreboard,
                 objective.getName(),
                 ObjectiveCriteria.DUMMY,
-                objective.getTitle().convert(player.getVersion()),
-                ObjectiveCriteria.RenderType.values()[objective.getHealthDisplay().ordinal()],
+                objective.getTitle().convert(),
+                RenderType.values()[objective.getHealthDisplay().ordinal()],
                 false,
                 objective.getNumberFormat() == null ? null : objective.getNumberFormat().toFixedFormat(FixedFormat::new)
         );
@@ -76,22 +77,20 @@ public class PaperPacketScoreboard extends SafeScoreboard<BukkitTabPlayer> {
     @Override
     public void updateObjective(@NonNull Objective objective) {
         net.minecraft.world.scores.Objective obj = (net.minecraft.world.scores.Objective) objective.getPlatformObjective();
-        obj.setDisplayName(objective.getTitle().convert(player.getVersion()));
-        obj.setRenderType(ObjectiveCriteria.RenderType.values()[objective.getHealthDisplay().ordinal()]);
+        obj.setDisplayName(objective.getTitle().convert());
+        obj.setRenderType(RenderType.values()[objective.getHealthDisplay().ordinal()]);
         sendPacket(new ClientboundSetObjectivePacket(obj, ObjectiveAction.UPDATE));
     }
 
     @Override
     public void setScore(@NonNull Score score) {
-        sendPacket(
-                new ClientboundSetScorePacket(
-                        score.getHolder(),
-                        score.getObjective().getName(),
-                        score.getValue(),
-                        Optional.ofNullable(score.getDisplayName() == null ? null : score.getDisplayName().convert(player.getVersion())), 
-                        Optional.ofNullable(score.getNumberFormat() == null ? null : score.getNumberFormat().toFixedFormat(FixedFormat::new))
-                )
-        );
+        sendPacket(new ClientboundSetScorePacket(
+                score.getHolder(),
+                score.getObjective().getName(),
+                score.getValue(),
+                Optional.ofNullable(score.getDisplayName() == null ? null : score.getDisplayName().convert()),
+                Optional.ofNullable(score.getNumberFormat() == null ? null : score.getNumberFormat().toFixedFormat(FixedFormat::new))
+        ));
     }
 
     @Override
@@ -131,8 +130,8 @@ public class PaperPacketScoreboard extends SafeScoreboard<BukkitTabPlayer> {
         t.setColor(formats[team.getColor().getLegacyColor().ordinal()]);
         t.setCollisionRule(collisions[team.getCollision().ordinal()]);
         t.setNameTagVisibility(visibilities[team.getVisibility().ordinal()]);
-        t.setPlayerPrefix(team.getPrefix().convert(player.getVersion()));
-        t.setPlayerSuffix(team.getSuffix().convert(player.getVersion()));
+        t.setPlayerPrefix(team.getPrefix().convert());
+        t.setPlayerSuffix(team.getSuffix().convert());
     }
 
     @Override
@@ -152,7 +151,13 @@ public class PaperPacketScoreboard extends SafeScoreboard<BukkitTabPlayer> {
             players.set(team, onTeamPacket(action, team.getName(), team.getPlayers() == null ? Collections.emptyList() : team.getPlayers()));
         }
     }
-    
+
+    /**
+     * Sends the packet to the player.
+     *
+     * @param   packet
+     *          Packet to send
+     */
     private void sendPacket(@NotNull Packet<?> packet) {
         ((CraftPlayer)player.getPlayer()).getHandle().connection.sendPacket(packet);
     }

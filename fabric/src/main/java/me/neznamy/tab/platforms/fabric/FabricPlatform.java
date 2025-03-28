@@ -4,14 +4,14 @@ import eu.pb4.placeholders.api.PlaceholderContext;
 import eu.pb4.placeholders.api.Placeholders;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import me.neznamy.chat.component.KeybindComponent;
+import me.neznamy.chat.component.TabComponent;
+import me.neznamy.chat.component.TextComponent;
+import me.neznamy.chat.component.TranslatableComponent;
 import me.neznamy.tab.platforms.fabric.hook.FabricTabExpansion;
-import me.neznamy.tab.shared.ProtocolVersion;
 import me.neznamy.tab.shared.TAB;
 import me.neznamy.tab.shared.TabConstants;
 import me.neznamy.tab.shared.backend.BackendPlatform;
-import me.neznamy.tab.shared.chat.SimpleComponent;
-import me.neznamy.tab.shared.chat.StructuredComponent;
-import me.neznamy.tab.shared.chat.TabComponent;
 import me.neznamy.tab.shared.features.PerWorldPlayerListConfiguration;
 import me.neznamy.tab.shared.features.PlaceholderManagerImpl;
 import me.neznamy.tab.shared.features.injection.PipelineInjector;
@@ -23,7 +23,12 @@ import me.neznamy.tab.shared.platform.Scoreboard;
 import me.neznamy.tab.shared.platform.TabList;
 import me.neznamy.tab.shared.platform.TabPlayer;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.SharedConstants;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.Style;
+import net.minecraft.network.chat.TextColor;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.NotNull;
@@ -43,9 +48,6 @@ public class FabricPlatform implements BackendPlatform {
     /** Minecraft server reference */
     private final MinecraftServer server;
 
-    /** Server version */
-    private final ProtocolVersion serverVersion = ProtocolVersion.fromFriendlyName(FabricTAB.minecraftVersion);
-
     @Override
     public void registerUnknownPlaceholder(@NotNull String identifier) {
         if (!FabricLoader.getInstance().isModLoaded("placeholder-api")) {
@@ -54,12 +56,11 @@ public class FabricPlatform implements BackendPlatform {
         }
 
         PlaceholderManagerImpl manager = TAB.getInstance().getPlaceholderManager();
-        int refresh = manager.getRefreshInterval(identifier);
-        manager.registerPlayerPlaceholder(identifier, refresh,
+        manager.registerPlayerPlaceholder(identifier,
                 p -> Placeholders.parseText(
-                            FabricMultiVersion.newTextComponent(identifier),
-                            PlaceholderContext.of((ServerPlayer) p.getPlayer())
-                        ).getString()
+                        Component.literal(identifier),
+                        PlaceholderContext.of((ServerPlayer) p.getPlayer())
+                ).getString()
         );
     }
 
@@ -97,18 +98,18 @@ public class FabricPlatform implements BackendPlatform {
 
     @Override
     public void logInfo(@NotNull TabComponent message) {
-        FabricMultiVersion.logInfo(message);
+        MinecraftServer.LOGGER.info("[TAB] " + message.toRawText());
     }
 
     @Override
     public void logWarn(@NotNull TabComponent message) {
-        FabricMultiVersion.logWarn(message);
+        MinecraftServer.LOGGER.warn("[TAB] " + message.toRawText());
     }
 
     @Override
     @NotNull
     public String getServerVersionInfo() {
-        return "[Fabric] " + FabricTAB.minecraftVersion;
+        return "[Fabric] " + SharedConstants.getCurrentVersion().getName();
     }
 
     @Override
@@ -134,21 +135,40 @@ public class FabricPlatform implements BackendPlatform {
 
     @Override
     @NotNull
-    public Component convertComponent(@NotNull TabComponent component, boolean modern) {
-        if (component instanceof SimpleComponent component1) {
-            return FabricMultiVersion.newTextComponent(component1.getText());
+    public Component convertComponent(@NotNull TabComponent component) {
+        // Component type
+        MutableComponent nmsComponent;
+        if (component instanceof TextComponent) {
+            nmsComponent = Component.literal(((TextComponent) component).getText());
+        } else if (component instanceof TranslatableComponent) {
+            nmsComponent = Component.translatable(((TranslatableComponent) component).getKey());
+        } else if (component instanceof KeybindComponent) {
+            nmsComponent = Component.keybind(((KeybindComponent) component).getKeybind());
+        } else {
+            throw new IllegalStateException("Unexpected component type: " + component.getClass().getName());
         }
-        if (component instanceof StructuredComponent component1) {
-            Component nmsComponent = FabricMultiVersion.newTextComponent(component1.getText());
 
-            FabricMultiVersion.setStyle(nmsComponent, FabricMultiVersion.convertModifier(component1.getModifier(), modern));
-            for (StructuredComponent extra : component1.getExtra()) {
-                FabricMultiVersion.addSibling(nmsComponent, convertComponent(extra, modern));
-            }
-            return nmsComponent;
+        // Component style
+        nmsComponent.setStyle(new Style(
+                component.getModifier().getColor() == null ? null : TextColor.fromRgb(component.getModifier().getColor().getRgb()),
+                component.getModifier().getShadowColor(),
+                component.getModifier().getBold(),
+                component.getModifier().getItalic(),
+                component.getModifier().getUnderlined(),
+                component.getModifier().getStrikethrough(),
+                component.getModifier().getObfuscated(),
+                null,
+                null,
+                null,
+                component.getModifier().getFont() == null ? null : ResourceLocation.tryParse(component.getModifier().getFont())
+        ));
+
+        // Extra
+        for (TabComponent extra : component.getExtra()) {
+            nmsComponent.getSiblings().add(convertComponent(extra));
         }
-        throw new UnsupportedOperationException("Adventure components created using MiniMessage syntax are not supported on Fabric. " +
-                "You can request the implementation if you ran into this error.");
+
+        return nmsComponent;
     }
 
     @Override
@@ -170,13 +190,8 @@ public class FabricPlatform implements BackendPlatform {
     }
 
     @Override
-    public boolean supportsNumberFormat() {
-        return serverVersion.getNetworkId() >= ProtocolVersion.V1_20_3.getNetworkId();
-    }
-
-    @Override
-    public boolean supportsListOrder() {
-        return serverVersion.getNetworkId() >= ProtocolVersion.V1_21_2.getNetworkId();
+    public boolean supportsScoreboards() {
+        return true;
     }
 
     @Override
@@ -188,6 +203,6 @@ public class FabricPlatform implements BackendPlatform {
 
     @Override
     public double getMSPT() {
-        return FabricMultiVersion.getMSPT(server);
+        return (float) server.getAverageTickTimeNanos() / 1000000;
     }
 }

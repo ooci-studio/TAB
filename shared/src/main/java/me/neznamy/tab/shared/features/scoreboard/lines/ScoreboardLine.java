@@ -2,25 +2,24 @@ package me.neznamy.tab.shared.features.scoreboard.lines;
 
 import lombok.Getter;
 import lombok.NonNull;
+import me.neznamy.chat.TextColor;
+import me.neznamy.tab.api.scoreboard.Line;
 import me.neznamy.tab.shared.Limitations;
 import me.neznamy.tab.shared.TAB;
 import me.neznamy.tab.shared.TabConstants;
-import me.neznamy.tab.shared.chat.EnumChatFormat;
-import me.neznamy.tab.api.scoreboard.Line;
-import me.neznamy.tab.shared.chat.TextColor;
 import me.neznamy.tab.shared.cpu.ThreadExecutor;
 import me.neznamy.tab.shared.features.scoreboard.ScoreRefresher;
+import me.neznamy.tab.shared.features.scoreboard.ScoreboardImpl;
+import me.neznamy.tab.shared.features.scoreboard.ScoreboardManagerImpl;
 import me.neznamy.tab.shared.features.types.CustomThreaded;
 import me.neznamy.tab.shared.features.types.RefreshableFeature;
 import me.neznamy.tab.shared.platform.Scoreboard;
 import me.neznamy.tab.shared.platform.TabPlayer;
-import me.neznamy.tab.shared.features.scoreboard.ScoreboardImpl;
-import me.neznamy.tab.shared.features.scoreboard.ScoreboardManagerImpl;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Collections;
 import java.util.Set;
-import java.util.WeakHashMap;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Abstract class representing a line of scoreboard
@@ -40,13 +39,13 @@ public abstract class ScoreboardLine extends RefreshableFeature implements Line,
     
     //scoreboard team name of player in this line
     protected final String teamName;
-    
-    //forced player name start to make lines unique & sort them by names
-    protected final String playerName;
+
+    /** Forced player name start to make lines unique & sort them by names */
+    protected final String forcedPlayerNameStart;
 
     private final ScoreRefresher scoreRefresher;
 
-    private final Set<TabPlayer> shownPlayers = Collections.newSetFromMap(new WeakHashMap<>());
+    private final Set<TabPlayer> shownPlayers = Collections.newSetFromMap(new ConcurrentHashMap<>());
     
     /**
      * Constructs new instance with given parameters
@@ -61,7 +60,8 @@ public abstract class ScoreboardLine extends RefreshableFeature implements Line,
         this.parent = parent;
         this.lineNumber = lineNumber;
         teamName = "TAB-Sidebar-" + lineNumber;
-        playerName = getPlayerName(lineNumber);
+        if (lineNumber > 99) throw new IllegalStateException("Internal code does not support more than 99 lines per scoreboard.");
+        forcedPlayerNameStart = String.format("§%d§%d§r", (lineNumber / 10) % 10, lineNumber % 10);
         scoreRefresher = new ScoreRefresher(this, numberFormat);
         TAB.getInstance().getFeatureManager().registerFeature(TabConstants.Feature.scoreboardScore(parent.getName(), lineNumber), scoreRefresher);
     }
@@ -83,14 +83,15 @@ public abstract class ScoreboardLine extends RefreshableFeature implements Line,
     public abstract void unregister(@NonNull TabPlayer p);
 
     /**
-     * Returns forced name start of this line to specified viewer
+     * Returns player name of this line for specified viewer.
      *
      * @param   viewer
-     *          Player to get forced name start for
-     * @return  forced name start of this line to specified viewer
+     *          Player to get line name for
+     * @return  Name of this line for specified viewer
      */
+    @NotNull
     public String getPlayerName(@NonNull TabPlayer viewer) {
-        return playerName;
+        return forcedPlayerNameStart;
     }
 
     /**
@@ -109,17 +110,6 @@ public abstract class ScoreboardLine extends RefreshableFeature implements Line,
         return new String[] {string.substring(0, splitIndex), string.substring(splitIndex)};
     }
 
-    /**
-     * Builds forced name start based on line number
-     *
-     * @param   lineNumber
-     *          ID of line
-     * @return  forced name start
-     */
-    protected String getPlayerName(int lineNumber) {
-        return String.format("§%c§r", "0123456789abcdefklmnor".charAt(lineNumber-1));
-    }
-    
     /**
      * Sends this line to player
      *
@@ -148,7 +138,7 @@ public abstract class ScoreboardLine extends RefreshableFeature implements Line,
                 Scoreboard.CollisionRule.NEVER,
                 Collections.singletonList(fakePlayer),
                 0,
-                TextColor.legacy(EnumChatFormat.RESET)
+                TextColor.RESET
         );
         shownPlayers.add(p);
     }
@@ -206,7 +196,7 @@ public abstract class ScoreboardLine extends RefreshableFeature implements Line,
             String[] prefixOther = split(text, Limitations.TEAM_PREFIX_SUFFIX_PRE_1_13);
             prefixValue = prefixOther[0];
             String other = prefixOther[1];
-            other = playerNameStart + EnumChatFormat.getLastColors(prefixValue) + other;
+            other = playerNameStart + getLastColors(prefixValue) + other;
             String[] nameSuffix = split(other, maxNameLength);
             nameValue = nameSuffix[0];
             suffixValue = nameSuffix[1];
@@ -254,8 +244,18 @@ public abstract class ScoreboardLine extends RefreshableFeature implements Line,
                 teamName,
                 parent.getManager().getCache().get(prefix),
                 parent.getManager().getCache().get(suffix),
-                TextColor.legacy(EnumChatFormat.RESET)
+                TextColor.RESET
         );
+    }
+
+    /**
+     * Silently removes players from the list of players this line is shown to.
+     *
+     * @param   player
+     *          Player to remove
+     */
+    public void removePlayerSilently(@NonNull TabPlayer player) {
+        shownPlayers.remove(player);
     }
 
     @Override
@@ -274,5 +274,32 @@ public abstract class ScoreboardLine extends RefreshableFeature implements Line,
     @Override
     public String getRefreshDisplayName() {
         return "Updating Scoreboard lines";
+    }
+
+    /**
+     * Returns last color codes used in provided text.
+     *
+     * @param   input
+     *          text to get last colors from
+     * @return  last colors used in provided text or empty string if nothing was found
+     */
+    @NotNull
+    protected String getLastColors(@NotNull String input) {
+        StringBuilder result = new StringBuilder();
+        int length = input.length();
+        for (int index = length - 1; index > -1; index--) {
+            char section = input.charAt(index);
+            if ((section == '§' || section == '&') && (index < length - 1)) {
+                char c = input.charAt(index + 1);
+                if ("0123456789AaBbCcDdEeFfKkLlMmNnOoRr".contains(String.valueOf(c))) {
+                    result.insert(0, '§');
+                    result.insert(1, c);
+                    if ("0123456789AaBbCcDdEeFfRr".contains(String.valueOf(c))) {
+                        break;
+                    }
+                }
+            }
+        }
+        return result.toString();
     }
 }

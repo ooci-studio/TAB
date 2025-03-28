@@ -2,7 +2,7 @@ package me.neznamy.tab.shared.config.helper;
 
 import me.neznamy.tab.api.bossbar.BossBar;
 import me.neznamy.tab.shared.TAB;
-import me.neznamy.tab.shared.chat.SimpleComponent;
+import me.neznamy.chat.component.SimpleTextComponent;
 import me.neznamy.tab.shared.features.sorting.types.SortingType;
 import me.neznamy.tab.shared.platform.TabPlayer;
 import me.neznamy.tab.shared.proxy.ProxyTabPlayer;
@@ -43,7 +43,7 @@ public class RuntimeErrorPrinter {
                     configuredValue, property, bossBar.getName(), output, player.getName(), expectation));
 
         } else {
-            error(String.format("BossBar \"%s\" has invalid input configured for %s (\"%s\"). Expecting a%s or a placeholder returning one.",
+            error(String.format("BossBar \"%s\" has invalid input configured for %s (\"%s\"). Expecting %s or a placeholder returning one.",
                     bossBar.getName(), property, configuredValue, expectation));
         }
     }
@@ -91,7 +91,7 @@ public class RuntimeErrorPrinter {
         // Placeholders are not initialized, because bridge did not respond yet (typically on join)
         if (target instanceof ProxyTabPlayer && !((ProxyTabPlayer)target).isBridgeConnected()) return;
 
-        error(String.format("Belowname number is configured to show \"%s\", but returned \"%s\" for player %s, which cannot be evaluated to a number.",
+        error(String.format("Belowname value is configured to show \"%s\", but returned \"%s\" for player %s, which cannot be evaluated to a number.",
                 configuredValue, output, target.getName()));
     }
 
@@ -99,7 +99,7 @@ public class RuntimeErrorPrinter {
         // Placeholders are not initialized, because bridge did not respond yet (typically on join)
         if (target instanceof ProxyTabPlayer && !((ProxyTabPlayer)target).isBridgeConnected()) return;
 
-        error(String.format("Belowname number is configured to show \"%s\", but returned \"%s\" " +
+        error(String.format("Belowname value is configured to show \"%s\", but returned \"%s\" " +
                         "for player %s, which is a decimal number. Truncating to an integer.",
                 configuredValue, output, target.getName()));
     }
@@ -198,6 +198,6 @@ public class RuntimeErrorPrinter {
      *          Message to log
      */
     public void error(@NotNull String message) {
-        TAB.getInstance().getPlatform().logWarn(new SimpleComponent(message.replace('§', '&')));
+        TAB.getInstance().getPlatform().logWarn(SimpleTextComponent.text(message.replace('§', '&')));
     }
 }
