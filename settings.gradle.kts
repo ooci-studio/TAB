@@ -12,6 +12,7 @@ dependencyResolutionManagement {
         maven("https://repo.spongepowered.org/repository/maven-public/") // Sponge
         maven("https://jitpack.io") // PremiumVanish, Vault, YamlAssist, RedisBungee
         maven("https://repo.md-5.net/content/groups/public/") // LibsDisguises
+        maven("https://repo.codemc.org/repository/nms/") // CraftBukkit + NMS
     }
 }
 
@@ -19,6 +20,7 @@ pluginManagement {
     includeBuild("build-logic")
     repositories {
         maven("https://repo.spongepowered.org/repository/maven-public/")
+        maven("https://maven.architectury.dev/")
         gradlePluginPortal()
         mavenCentral()
     }
@@ -31,9 +33,16 @@ include(":shared")
 include(":velocity")
 include(":bukkit")
 include(":bukkit:paper")
+include(":bukkit:v1_8_R3")
+include(":bukkit:v1_12_R1")
+include(":bukkit:v1_16_R3")
+include(":bukkit:v1_17_R1")
+include(":bukkit:v1_18_R2")
+include(":bukkit:v1_19_R1")
 include(":bungeecord")
 include(":component")
-include(":sponge7")
-include(":sponge8")
+include(":sponge")
 include(":fabric")
+include(":neoforge")
+include(":forge")
 include(":jar")

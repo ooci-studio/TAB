@@ -1,7 +1,7 @@
 package me.neznamy.tab.platforms.paper;
 
 import me.neznamy.chat.ChatModifier;
-import me.neznamy.tab.platforms.bukkit.nms.converter.ComponentConverter;
+import me.neznamy.tab.platforms.bukkit.provider.ComponentConverter;
 import net.minecraft.network.chat.*;
 import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.NotNull;
@@ -9,7 +9,6 @@ import org.jetbrains.annotations.NotNull;
 /**
  * Component converter using direct mojang-mapped code.
  */
-@SuppressWarnings("unused") // Used via reflection
 public class PaperComponentConverter extends ComponentConverter {
 
     @Override

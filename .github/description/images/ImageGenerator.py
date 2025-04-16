@@ -1,4 +1,5 @@
 from PIL import Image, ImageDraw, ImageFont
+import requests
 
 line_spacing = 10
 padding = 10
@@ -84,6 +85,18 @@ def create_image(overlay_text, second_images, output_path, texts):
 
     # Save
     generator.save(final_img)
+
+def download_image(url, save_path):
+    try:
+        response = requests.get(url, stream=True)
+        response.raise_for_status()
+
+        with open(save_path, "wb") as file:
+            for chunk in response.iter_content(1024):
+                file.write(chunk)
+
+    except requests.RequestException as e:
+        print(f"Error downloading image: {e}")
 
 if __name__ == "__main__":
     create_image("Header & Footer", ["Example_HeaderFooter.png"], "Generated_HeaderFooter.png",
@@ -260,3 +273,16 @@ if __name__ == "__main__":
                      Text("Many misconfiguration checks to help solve issues much faster")
                  ]
     )
+
+    release = "5.2.0"
+    download_image(f"https://img.shields.io/badge/Release-{release}-blue.svg", "Badge_Release.svg")
+
+    minecraft = "1.5 - 1.21.5".replace(" ", "%20").replace("-", "--")
+    download_image(f"https://img.shields.io/badge/Minecraft-{minecraft}-blue.svg", "Badge_Minecraft.svg")
+
+    java = "8+"
+    download_image(f"https://img.shields.io/badge/Java-{java}-blue.svg", "Badge_Java.svg")
+
+    download_image(f"https://img.shields.io/badge/GitHub-Source%20code-yellow.svg", "Badge_SourceCode.svg")
+
+    download_image(f"https://img.shields.io/badge/Documentation-Wiki-yellow.svg", "Badge_Documentation.svg")
