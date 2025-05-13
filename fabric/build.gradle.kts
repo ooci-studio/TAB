@@ -11,11 +11,11 @@ repositories {
     maven("https://maven.nucleoid.xyz/")
 }
 
-val minecraftVersion = "25w16a"
+val minecraftVersion = "25w19a"
 
 // Fabric API versions for each Minecraft version for easier backporting
 val fabricApiVersions = mapOf(
-    "25w16a" to "0.119.10+1.21.6",
+    "25w19a" to "0.119.10+1.21.6",
     "1.21.5" to "0.119.9+1.21.5",
     "1.21.4" to "0.119.2+1.21.4",
     "1.21.3" to "0.114.0+1.21.3",
@@ -68,6 +68,6 @@ tasks {
         options.release.set(17)
     }
     validateAccessWidener {
-        enabled = false // It contains multiple versions for easier backporting
+        enabled = true
     }
 }

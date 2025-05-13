@@ -35,8 +35,49 @@ public class NMSPacketScoreboard extends SafeScoreboard<BukkitTabPlayer> {
     private static final ScoreboardTeamBase.EnumTeamPush[] collisions = ScoreboardTeamBase.EnumTeamPush.values();
     private static final Scoreboard dummyScoreboard = new Scoreboard();
 
-    private static final Field TeamPacket_ACTION = ReflectionUtils.getInstanceFields(PacketPlayOutScoreboardTeam.class, int.class).get(0);
     private static final Field TeamPacket_PLAYERS = ReflectionUtils.getOnlyField(PacketPlayOutScoreboardTeam.class, Collection.class);
+
+    @SneakyThrows
+    @SuppressWarnings("unchecked")
+    public static void onPacketSend(@NonNull Object packet, @NonNull SafeScoreboard<BukkitTabPlayer> scoreboard) {
+        if (scoreboard.isAntiOverrideScoreboard()) {
+            if (packet instanceof PacketPlayOutScoreboardDisplayObjective) {
+                TAB.getInstance().getFeatureManager().onDisplayObjective(
+                        scoreboard.getPlayer(),
+                        ((PacketPlayOutScoreboardDisplayObjective)packet).b(),
+                        ((PacketPlayOutScoreboardDisplayObjective)packet).c()
+                );
+            }
+            if (packet instanceof PacketPlayOutScoreboardObjective) {
+                TAB.getInstance().getFeatureManager().onObjective(
+                        scoreboard.getPlayer(),
+                        ((PacketPlayOutScoreboardObjective)packet).d(),
+                        ((PacketPlayOutScoreboardObjective)packet).b()
+                );
+            }
+        }
+        if (scoreboard.isAntiOverrideTeams() && packet instanceof PacketPlayOutScoreboardTeam) {
+            int action = getMethod((PacketPlayOutScoreboardTeam) packet);
+            if (action == TeamAction.UPDATE) return;
+            Collection<String> players = (Collection<String>) TeamPacket_PLAYERS.get(packet);
+            if (players == null) players = Collections.emptyList();
+            TeamPacket_PLAYERS.set(packet, scoreboard.onTeamPacket(action, ((PacketPlayOutScoreboardTeam)packet).d(), players));
+        }
+    }
+
+    private static int getMethod(@NonNull PacketPlayOutScoreboardTeam team) {
+        if (team.c() == PacketPlayOutScoreboardTeam.a.a) {
+            return 0;
+        } else if (team.c() == PacketPlayOutScoreboardTeam.a.b) {
+            return 1;
+        } else if (team.b() == PacketPlayOutScoreboardTeam.a.a) {
+            return 3;
+        } else if (team.b() == PacketPlayOutScoreboardTeam.a.b) {
+            return 4;
+        } else {
+            return 2;
+        }
+    }
 
     /**
      * Constructs new instance with given player.
@@ -139,33 +180,8 @@ public class NMSPacketScoreboard extends SafeScoreboard<BukkitTabPlayer> {
     }
 
     @Override
-    @SneakyThrows
-    @SuppressWarnings("unchecked")
     public void onPacketSend(@NonNull Object packet) {
-        if (isAntiOverrideScoreboard()) {
-            if (packet instanceof PacketPlayOutScoreboardDisplayObjective) {
-                TAB.getInstance().getFeatureManager().onDisplayObjective(
-                        player,
-                        ((PacketPlayOutScoreboardDisplayObjective)packet).b(),
-                        ((PacketPlayOutScoreboardDisplayObjective)packet).c()
-                );
-            }
-            if (packet instanceof PacketPlayOutScoreboardObjective) {
-                TAB.getInstance().getFeatureManager().onObjective(
-                        player,
-                        ((PacketPlayOutScoreboardObjective)packet).d(),
-                        ((PacketPlayOutScoreboardObjective)packet).b()
-                );
-            }
-        }
-        if (isAntiOverrideTeams() && packet instanceof PacketPlayOutScoreboardTeam) {
-            int action = TeamPacket_ACTION.getInt(packet);
-            if (action == TeamAction.UPDATE) return;
-            Collection<String> players = (Collection<String>) TeamPacket_PLAYERS.get(packet);
-            if (players == null) players = Collections.emptyList();
-            TeamPacket_PLAYERS.set(packet, ((SafeScoreboard<?>)player.getScoreboard()).onTeamPacket(
-                    action, ((PacketPlayOutScoreboardTeam)packet).d(), players));
-        }
+        onPacketSend(packet, this);
     }
 
     /**
