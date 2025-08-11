@@ -34,7 +34,6 @@ header-footer:
 # https://github.com/NEZNAMY/TAB/wiki/Feature-guide:-Tablist-name-formatting
 tablist-name-formatting:
   enabled: true
-  anti-override: true
   disable-condition: '%world%=disabledworld'
 
 # https://github.com/NEZNAMY/TAB/wiki/Feature-guide:-Nametags
@@ -42,7 +41,6 @@ scoreboard-teams:
   enabled: true
   enable-collision: true
   invisible-nametags: false
-  anti-override: true
   # https://github.com/NEZNAMY/TAB/wiki/Feature-guide:-Sorting-players-in-tablist
   sorting-types:
     - "GROUPS:owner,admin,mod,helper,builder,vip,default"
@@ -56,7 +54,7 @@ playerlist-objective:
   enabled: true
   value: "%ping%"
   fancy-value: "&7Ping: %ping%"
-  title: "Java Edition is better" # Only visible on Bedrock Edition
+  title: "TAB" # Only visible on Bedrock Edition
   render-type: INTEGER
   disable-condition: '%world%=disabledworld'
 
@@ -170,6 +168,24 @@ ping-spoof:
   enabled: false
   value: 0
 
+# https://github.com/NEZNAMY/TAB/wiki/Feature-guide:-Global-playerlist
+global-playerlist:
+  enabled: false
+  display-others-as-spectators: false
+  display-vanished-players-as-spectators: true
+  isolate-unlisted-servers: false
+  update-latency: false
+  spy-servers:
+    - spyserver1
+    - spyserver2
+  server-groups:
+    lobbies:
+      - lobby1
+      - lobby2
+    group2:
+      - server1
+      - server2
+
 placeholders:
   date-format: "dd.MM.yyyy"
   time-format: "[HH:mm:ss / h:mm a]"
@@ -231,6 +247,7 @@ mysql:
   password: password
   useSSL: true
 
+# https://github.com/NEZNAMY/TAB/wiki/Feature-guide:-Multi-server-support
 proxy-support:
   enabled: true
   # Supported types: PLUGIN, REDIS, RABBITMQ
@@ -271,24 +288,6 @@ compensate-for-packetevents-bug: false
 #####################################################################
 # PROXY ONLY - THE FOLLOWING SECTION IS ONLY FOR PROXY INSTALLATION #
 #####################################################################
-
-# https://github.com/NEZNAMY/TAB/wiki/Feature-guide:-Global-playerlist
-global-playerlist:
-  enabled: false
-  display-others-as-spectators: false
-  display-vanished-players-as-spectators: true
-  isolate-unlisted-servers: false
-  update-latency: false
-  spy-servers:
-    - spyserver1
-    - spyserver2
-  server-groups:
-    lobbies:
-      - lobby1
-      - lobby2
-    group2:
-      - server1
-      - server2
 
 # Take permissions and groups from backend server instead of proxy
 use-bukkit-permissions-manager: false

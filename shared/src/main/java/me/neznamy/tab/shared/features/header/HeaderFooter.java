@@ -1,12 +1,14 @@
 package me.neznamy.tab.shared.features.header;
 
 import lombok.Getter;
+import me.neznamy.chat.component.TabComponent;
 import me.neznamy.tab.api.tablist.HeaderFooterManager;
 import me.neznamy.tab.shared.Property;
 import me.neznamy.tab.shared.TAB;
 import me.neznamy.tab.shared.TabConstants;
-import me.neznamy.chat.component.SimpleTextComponent;
 import me.neznamy.tab.shared.cpu.ThreadExecutor;
+import me.neznamy.tab.shared.data.Server;
+import me.neznamy.tab.shared.data.World;
 import me.neznamy.tab.shared.features.header.HeaderFooterConfiguration.HeaderFooterPair;
 import me.neznamy.tab.shared.features.types.*;
 import me.neznamy.tab.shared.placeholders.conditions.Condition;
@@ -69,14 +71,14 @@ public class HeaderFooter extends RefreshableFeature implements HeaderFooterMana
     }
 
     @Override
-    public void onServerChange(@NotNull TabPlayer p, @NotNull String from, @NotNull String to) {
+    public void onServerChange(@NotNull TabPlayer p, @NotNull Server from, @NotNull Server to) {
         // Velocity clears header/footer on server switch, resend regardless of whether values changed or not
         updateProperties(p);
         sendHeaderFooter(p, p.headerFooterData.header.get(), p.headerFooterData.footer.get());
     }
 
     @Override
-    public void onWorldChange(@NotNull TabPlayer p, @NotNull String from, @NotNull String to) {
+    public void onWorldChange(@NotNull TabPlayer p, @NotNull World from, @NotNull World to) {
         if (updateProperties(p)) {
             sendHeaderFooter(p, p.headerFooterData.header.get(), p.headerFooterData.footer.get());
         }
@@ -124,7 +126,7 @@ public class HeaderFooter extends RefreshableFeature implements HeaderFooterMana
      */
     public void onDisableConditionChange(TabPlayer p, boolean disabledNow) {
         if (disabledNow) {
-            p.getTabList().setPlayerListHeaderFooter(SimpleTextComponent.EMPTY, SimpleTextComponent.EMPTY);
+            p.getTabList().setPlayerListHeaderFooter(TabComponent.empty(), TabComponent.empty());
         } else {
             sendHeaderFooter(p, p.headerFooterData.header.get(), p.headerFooterData.footer.get());
         }
@@ -144,12 +146,12 @@ public class HeaderFooter extends RefreshableFeature implements HeaderFooterMana
             return value[0];
         }
         List<String> lines = null;
-        HeaderFooterPair pair = configuration.getPerWorld().get(TAB.getInstance().getConfiguration().getGroup(configuration.getPerWorld().keySet(), p.world));
+        HeaderFooterPair pair = configuration.getPerWorld().get(TAB.getInstance().getConfiguration().getGroup(configuration.getPerWorld().keySet(), p.world.getName()));
         if (pair != null) {
             lines = property.equals("header") ? pair.getHeader() : pair.getFooter();
         }
         if (lines == null) {
-            pair = configuration.getPerServer().get(TAB.getInstance().getConfiguration().getGroup(configuration.getPerServer().keySet(), p.server));
+            pair = configuration.getPerServer().get(TAB.getInstance().getConfiguration().getGroup(configuration.getPerServer().keySet(), p.server.getName()));
             if (pair != null) {
                 lines = property.equals("header") ? pair.getHeader() : pair.getFooter();
             }

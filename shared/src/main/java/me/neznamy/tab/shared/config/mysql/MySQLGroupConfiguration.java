@@ -1,9 +1,11 @@
 package me.neznamy.tab.shared.config.mysql;
 
 import lombok.NonNull;
-import me.neznamy.tab.shared.config.PropertyConfiguration;
 import me.neznamy.tab.shared.TAB;
 import me.neznamy.tab.shared.TabConstants;
+import me.neznamy.tab.shared.config.PropertyConfiguration;
+import me.neznamy.tab.shared.data.Server;
+import me.neznamy.tab.shared.data.World;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -36,13 +38,13 @@ public class MySQLGroupConfiguration implements PropertyConfiguration {
             String value = crs.getString("value");
             String world = crs.getString("world");
             String server = crs.getString("server");
-            setProperty0(group, property, server, world, value);
-            checkProperty("MySQL", "group", group, property, server, world, true);
+            setProperty0(group, property, Server.byName(server), World.byName(world), value);
+            checkProperty("MySQL", "group", group, property, Server.byName(server), World.byName(world), true);
         }
     }
 
     @Override
-    public void setProperty(@NonNull String group, @NonNull String property, @Nullable String server, @Nullable String world, @Nullable String value) {
+    public void setProperty(@NonNull String group, @NonNull String property, @Nullable Server server, @Nullable World world, @Nullable String value) {
         String lowercaseGroup = group.equals(TabConstants.DEFAULT_GROUP) ? group : group.toLowerCase(Locale.US);
         try {
             if (getProperty(lowercaseGroup, property, server, world) != null) {
@@ -59,30 +61,32 @@ public class MySQLGroupConfiguration implements PropertyConfiguration {
         return isNull ? "is" : "=";
     }
 
-    private void setProperty0(@NonNull String group, @NonNull String property, @Nullable String server, @Nullable String world, @Nullable String value) {
+    private void setProperty0(@NonNull String group, @NonNull String property, @Nullable Server server, @Nullable World world, @Nullable String value) {
         if (world != null) {
-            perWorld.computeIfAbsent(world, w -> new HashMap<>()).computeIfAbsent(group, g -> new HashMap<>()).put(property, value);
+            perWorld.computeIfAbsent(world.getName(), w -> new HashMap<>()).computeIfAbsent(group, g -> new HashMap<>()).put(property, value);
         } else if (server != null) {
-            perServer.computeIfAbsent(server, s -> new HashMap<>()).computeIfAbsent(group, g -> new HashMap<>()).put(property, value);
+            perServer.computeIfAbsent(server.getName(), s -> new HashMap<>()).computeIfAbsent(group, g -> new HashMap<>()).put(property, value);
         } else {
             values.computeIfAbsent(group, g -> new HashMap<>()).put(property, value);
         }
     }
 
     @Override
-    public String[] getProperty(@NonNull String group, @NonNull String property, @Nullable String server, @Nullable String world) {
+    public String[] getProperty(@NonNull String group, @NonNull String property, @Nullable Server server, @Nullable World world) {
         String lowercaseGroup = group.equals(TabConstants.DEFAULT_GROUP) ? group : group.toLowerCase(Locale.US);
+        String worldName = world == null ? null : world.getName();
+        String serverName = server == null ? null : server.getName();
         Object value;
-        if ((value = perWorld.getOrDefault(world, new HashMap<>()).getOrDefault(lowercaseGroup, new HashMap<>()).get(property)) != null) {
-            return new String[] {toString(value), String.format("group=%s,world=%s", lowercaseGroup, world)};
+        if ((value = perWorld.getOrDefault(worldName, new HashMap<>()).getOrDefault(lowercaseGroup, new HashMap<>()).get(property)) != null) {
+            return new String[] {toString(value), String.format("group=%s,world=%s", lowercaseGroup, worldName)};
         }
-        if ((value = perWorld.getOrDefault(world, new HashMap<>()).getOrDefault(TabConstants.DEFAULT_GROUP, new HashMap<>()).get(property)) != null) {
-            return new String[] {toString(value), String.format("group=%s,world=%s", TabConstants.DEFAULT_GROUP, world)};
+        if ((value = perWorld.getOrDefault(worldName, new HashMap<>()).getOrDefault(TabConstants.DEFAULT_GROUP, new HashMap<>()).get(property)) != null) {
+            return new String[] {toString(value), String.format("group=%s,world=%s", TabConstants.DEFAULT_GROUP, worldName)};
         }
-        if ((value = perServer.getOrDefault(server, new HashMap<>()).getOrDefault(lowercaseGroup, new HashMap<>()).get(property)) != null) {
+        if ((value = perServer.getOrDefault(serverName, new HashMap<>()).getOrDefault(lowercaseGroup, new HashMap<>()).get(property)) != null) {
             return new String[] {toString(value), String.format("group=%s,server=%s", lowercaseGroup, server)};
         }
-        if ((value = perServer.getOrDefault(server, new HashMap<>()).getOrDefault(TabConstants.DEFAULT_GROUP, new HashMap<>()).get(property)) != null) {
+        if ((value = perServer.getOrDefault(serverName, new HashMap<>()).getOrDefault(TabConstants.DEFAULT_GROUP, new HashMap<>()).get(property)) != null) {
             return new String[] {toString(value), String.format("group=%s,server=%s", TabConstants.DEFAULT_GROUP, server)};
         }
         if ((value = values.getOrDefault(lowercaseGroup, new HashMap<>()).get(property)) != null) {
@@ -97,8 +101,8 @@ public class MySQLGroupConfiguration implements PropertyConfiguration {
     @Override
     public void remove(@NonNull String group) {
         values.getOrDefault(group, new HashMap<>()).keySet().forEach(property -> setProperty(group, property, null, null, null));
-        perWorld.keySet().forEach(world -> perWorld.get(world).getOrDefault(group, new HashMap<>()).keySet().forEach(property -> setProperty(group, property, null, world, null)));
-        perServer.keySet().forEach(server -> perServer.get(server).getOrDefault(group, new HashMap<>()).keySet().forEach(property -> setProperty(group, property, server, null, null)));
+        perWorld.forEach((world, stringMapMap) -> stringMapMap.getOrDefault(group, new HashMap<>()).keySet().forEach(property -> setProperty(group, property, null, World.byName(world), null)));
+        perServer.forEach((server, stringMapMap) -> stringMapMap.getOrDefault(group, new HashMap<>()).keySet().forEach(property -> setProperty(group, property, Server.byName(server), null, null)));
     }
 
     @Override

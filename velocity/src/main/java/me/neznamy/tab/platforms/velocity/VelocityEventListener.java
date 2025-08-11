@@ -11,6 +11,7 @@ import com.velocitypowered.api.proxy.Player;
 import me.neznamy.tab.shared.ProtocolVersion;
 import me.neznamy.tab.shared.TAB;
 import me.neznamy.tab.shared.TabConstants;
+import me.neznamy.tab.shared.data.Server;
 import me.neznamy.tab.shared.features.bossbar.BossBarManagerImpl;
 import me.neznamy.tab.shared.features.scoreboard.ScoreboardManagerImpl;
 import me.neznamy.tab.shared.platform.EventListener;
@@ -84,7 +85,7 @@ public class VelocityEventListener implements EventListener<Player> {
                 if (!(player.getScoreboard() instanceof VelocityScoreboard)) player.getScoreboard().resend();
                 tab.getFeatureManager().onServerChange(
                         player.getUniqueId(),
-                        e.getPlayer().getCurrentServer().map(s -> s.getServerInfo().getName()).orElse("null")
+                        Server.byName(e.getPlayer().getCurrentServer().map(s -> s.getServerInfo().getName()).orElse("null"))
                 );
                 tab.getFeatureManager().onTabListClear(player);
                 if (player.getVersion().getNetworkId() >= ProtocolVersion.V1_20_2.getNetworkId()) {
@@ -103,6 +104,7 @@ public class VelocityEventListener implements EventListener<Player> {
     @Subscribe
     public void onCommand(@NotNull CommandExecuteEvent e) {
         if (TAB.getInstance().isPluginDisabled()) return;
+        if (!e.getResult().isAllowed()) return;
         String command = TAB.getInstance().getPlatform().getCommand();
         BossBarManagerImpl bossBarManager = TAB.getInstance().getFeatureManager().getFeature(TabConstants.Feature.BOSS_BAR);
         if (bossBarManager != null && bossBarManager.getCommand().substring(1).equals(e.getCommand())) {

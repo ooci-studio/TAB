@@ -4,7 +4,7 @@ plugins {
 
 allprojects {
     group = "me.neznamy"
-    version = "5.2.1-SNAPSHOT"
+    version = "5.2.6-SNAPSHOT"
     description = "An all-in-one solution that works"
 
     ext.set("id", "tab")
@@ -15,7 +15,9 @@ allprojects {
 
 val platforms = setOf(
     projects.bukkit,
-    projects.bukkit.paper,
+    projects.bukkit.paper1205,
+    projects.bukkit.paper1212,
+    projects.bukkit.paper1214,
     projects.bukkit.v18R3,
     projects.bukkit.v112R1,
     projects.bukkit.v116R3,

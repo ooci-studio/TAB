@@ -1,6 +1,7 @@
 package me.neznamy.tab.platforms.bukkit.platform;
 
 import lombok.Getter;
+import lombok.Setter;
 import lombok.SneakyThrows;
 import me.clip.placeholderapi.PlaceholderAPI;
 import me.neznamy.chat.component.*;
@@ -14,7 +15,6 @@ import me.neznamy.tab.platforms.bukkit.provider.ImplementationProvider;
 import me.neznamy.tab.platforms.bukkit.provider.bukkit.BukkitImplementationProvider;
 import me.neznamy.tab.platforms.bukkit.provider.bukkit.PaperScoreboard;
 import me.neznamy.tab.platforms.bukkit.provider.reflection.ReflectionImplementationProvider;
-import me.neznamy.tab.platforms.bukkit.provider.viaversion.ViaVersionProvider;
 import me.neznamy.tab.shared.GroupManager;
 import me.neznamy.tab.shared.ProtocolVersion;
 import me.neznamy.tab.shared.TAB;
@@ -67,7 +67,6 @@ public class BukkitPlatform implements BackendPlatform {
     private final JavaPlugin plugin;
 
     /** Server version */
-    @Getter
     private final ProtocolVersion serverVersion = ProtocolVersion.fromFriendlyName(Bukkit.getBukkitVersion().split("-")[0]);
 
     /** Variables checking presence of other plugins to hook into */
@@ -84,13 +83,8 @@ public class BukkitPlatform implements BackendPlatform {
 
     /** Implementation for creating new instances using content available on the server */
     @NotNull
-    private final ImplementationProvider serverImplementationProvider = findImplementationProvider();
-
-    /** Implementation for sending new content to new players on old servers */
-    @Nullable
-    private final ViaVersionProvider viaVersionProvider =
-            ReflectionUtils.classExists("com.viaversion.viaversion.protocols.v1_20_2to1_20_3.Protocol1_20_2To1_20_3") ?
-                    new ViaVersionProvider(serverVersion) : null;
+    @Setter
+    private ImplementationProvider implementationProvider = findImplementationProvider();
 
     private final boolean modernOnlinePlayers;
 
@@ -118,16 +112,19 @@ public class BukkitPlatform implements BackendPlatform {
     @NotNull
     @SneakyThrows
     private ImplementationProvider findImplementationProvider() {
-        if (ReflectionUtils.classExists("org.bukkit.craftbukkit.CraftServer") &&
-                (serverVersion == ProtocolVersion.V1_21_4 || serverVersion == ProtocolVersion.V1_21_5)) {
-            return (ImplementationProvider) Class.forName("me.neznamy.tab.platforms.paper.PaperImplementationProvider").getConstructor().newInstance();
+        // Check for mojang-mapped paper (1.20.5+)
+        String paperModule = getPaperModule();
+        if (paperModule != null) {
+            return (ImplementationProvider) Class.forName("me.neznamy.tab.platforms.paper_" + paperModule + ".PaperImplementationProvider").getConstructor().newInstance();
         }
 
+        // Check for direct NMS on some supported versions
         String serverPackage = BukkitReflection.getServerVersion().getServerPackage();
         if (Arrays.asList("v1_8_R3", "v1_12_R1", "v1_16_R3", "v1_17_R1", "v1_18_R2", "v1_19_R1").contains(serverPackage) && serverVersion != ProtocolVersion.V1_19) {
             return (ImplementationProvider) Class.forName("me.neznamy.tab.platforms.bukkit." + serverPackage + ".NMSImplementationProvider").getConstructor().newInstance();
         }
 
+        // Try reflection
         try {
             return new ReflectionImplementationProvider();
         } catch (Throwable e) {
@@ -158,9 +155,39 @@ public class BukkitPlatform implements BackendPlatform {
                 }
                 Bukkit.getConsoleSender().sendMessage("§c[TAB] Please use " +
                         "a plugin version with full support for your server version for optimal experience. This plugin version " +
-                        "has full support for 1.8.8, 1.12.x, 1.16.5, 1.17.x, 1.18.2 and 1.19.1 - 1.21.5.");
+                        "has full support for 1.8.8, 1.12.x, 1.16.5, 1.17.x, 1.18.2 and 1.19.1 - 1.21.8.");
             }
             return new BukkitImplementationProvider();
+        }
+    }
+
+    /**
+     * Returns name of the paper module that can be used on this server.
+     * If this server is not using paper or no module is available for any other reason,
+     * {@code null} is returned.
+     *
+     * @return  Name of the available paper module or {@code null} if not available
+     */
+    @Nullable
+    private String getPaperModule() {
+        if (!ReflectionUtils.classExists("org.bukkit.craftbukkit.CraftServer")) return null;
+        switch (serverVersion) {
+            case V1_20_5:
+            case V1_20_6:
+            case V1_21:
+            case V1_21_1:
+                return "1_20_5";
+            case V1_21_2:
+            case V1_21_3:
+                return "1_21_2";
+            case V1_21_4:
+            case V1_21_5:
+            case V1_21_6:
+            case V1_21_7:
+            case V1_21_8:
+                return "1_21_4";
+            default:
+                return null;
         }
     }
 
@@ -192,7 +219,7 @@ public class BukkitPlatform implements BackendPlatform {
     @Override
     @Nullable
     public PipelineInjector createPipelineInjector() {
-        return serverImplementationProvider.getChannelFunction() != null ? new BukkitPipelineInjector() : null;
+        return implementationProvider.getChannelFunction() != null ? new BukkitPipelineInjector() : null;
     }
 
     @Override
@@ -246,7 +273,9 @@ public class BukkitPlatform implements BackendPlatform {
             Bukkit.getScheduler().runTask(plugin, () -> {
                 long time = System.nanoTime();
                 ppl[0].updateValue(p, placeholderAPI ? PlaceholderAPI.setPlaceholders((Player) p.getPlayer(), syncedPlaceholder) : identifier);
-                TAB.getInstance().getCPUManager().addPlaceholderTime(identifier, System.nanoTime() - time);
+                long totalTime =  System.nanoTime()-time;
+                TAB.getInstance().getCPUManager().addPlaceholderTime(identifier, totalTime);
+                TAB.getInstance().getCpu().addTime(TAB.getInstance().getPlaceholderManager().getFeatureName(), TabConstants.CpuUsageCategory.PLACEHOLDER_REQUEST, totalTime);
             });
             return null;
         });
@@ -281,7 +310,7 @@ public class BukkitPlatform implements BackendPlatform {
             command.setExecutor(cmd);
             command.setTabCompleter(cmd);
         } else {
-            logWarn(SimpleTextComponent.text("Failed to register command, is it defined in plugin.yml?"));
+            logWarn(TabComponent.legacyText("Failed to register command, is it defined in plugin.yml?"));
         }
     }
 
@@ -290,8 +319,8 @@ public class BukkitPlatform implements BackendPlatform {
         Metrics metrics = new Metrics(plugin, TabConstants.BSTATS_PLUGIN_ID_BUKKIT);
         metrics.addCustomChart(new SimplePie(TabConstants.MetricsChart.PERMISSION_SYSTEM,
                 () -> TAB.getInstance().getGroupManager().getPermissionPlugin()));
-        metrics.addCustomChart(new SimplePie(TabConstants.MetricsChart.SERVER_VERSION,
-                () -> "1." + serverVersion.getMinorVersion() + ".x"));
+        String version = serverVersion == ProtocolVersion.UNKNOWN ? "Unknown" : "1." + serverVersion.getMinorVersion() + ".x";
+        metrics.addCustomChart(new SimplePie(TabConstants.MetricsChart.SERVER_VERSION, () -> version));
     }
 
     @Override
@@ -303,8 +332,8 @@ public class BukkitPlatform implements BackendPlatform {
     @Override
     @NotNull
     public Object convertComponent(@NotNull TabComponent component) {
-        if (serverImplementationProvider.getComponentConverter() != null) {
-            return serverImplementationProvider.getComponentConverter().convert(component);
+        if (implementationProvider.getComponentConverter() != null) {
+            return implementationProvider.getComponentConverter().convert(component);
         } else {
             return component;
         }
@@ -312,13 +341,8 @@ public class BukkitPlatform implements BackendPlatform {
 
     @Override
     @NotNull
-    @SneakyThrows
     public Scoreboard createScoreboard(@NotNull TabPlayer player) {
-        if (viaVersionProvider != null) {
-            Scoreboard scoreboard = viaVersionProvider.newScoreboard((BukkitTabPlayer) player);
-            if (scoreboard != null) return scoreboard;
-        }
-        return serverImplementationProvider.newScoreboard((BukkitTabPlayer) player);
+        return implementationProvider.newScoreboard((BukkitTabPlayer) player);
     }
 
     @Override
@@ -339,18 +363,18 @@ public class BukkitPlatform implements BackendPlatform {
 
     @Override
     @NotNull
-    @SneakyThrows
     public TabList createTabList(@NotNull TabPlayer player) {
-        if (viaVersionProvider != null) {
-            TabList tabList = viaVersionProvider.newTabList((BukkitTabPlayer) player);
-            if (tabList != null) return tabList;
-        }
-        return serverImplementationProvider.newTabList((BukkitTabPlayer) player);
+        return implementationProvider.newTabList((BukkitTabPlayer) player);
     }
 
     @Override
     public boolean supportsScoreboards() {
         return true;
+    }
+
+    @Override
+    public boolean supportsListOrder() {
+        return serverVersion.getNetworkId() >= ProtocolVersion.V1_21_2.getNetworkId();
     }
 
     @Override

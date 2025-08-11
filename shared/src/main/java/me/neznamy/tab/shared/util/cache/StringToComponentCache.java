@@ -1,7 +1,6 @@
 package me.neznamy.tab.shared.util.cache;
 
 import me.neznamy.chat.TextColor;
-import me.neznamy.chat.component.SimpleTextComponent;
 import me.neznamy.chat.component.TabComponent;
 import me.neznamy.chat.rgb.RGBUtils;
 import me.neznamy.chat.util.TriFunction;
@@ -47,7 +46,11 @@ public class StringToComponentCache extends Cache<String, TabComponent> {
                     String sequence = "§" + format.getLegacyColor().getCharacter();
                     if (mmFormatted.contains(sequence)) {
                         String colorName = format == TextColor.UNDERLINE ? "underlined" : format.getLegacyColor().name().toLowerCase(Locale.US);
-                        mmFormatted = mmFormatted.replace(sequence, "<" + colorName + ">");
+                        if (format.getLegacyColor().isColor()) {
+                            mmFormatted = mmFormatted.replace(sequence, "<bold:false><italic:false><underlined:false><strikethrough:false><obfuscated:false><" + colorName + ">");
+                        } else {
+                            mmFormatted = mmFormatted.replace(sequence, "<" + colorName + ">");
+                        }
                     }
                 }
 
@@ -59,7 +62,7 @@ public class StringToComponentCache extends Cache<String, TabComponent> {
             }
             return text.contains("#") || text.contains("§x") || text.contains("<") ?
                     TabComponent.fromColoredText(text) : //contains RGB colors or font
-                    SimpleTextComponent.text(text); //no RGB
+                    TabComponent.legacyText(text); //no RGB
         });
     }
 

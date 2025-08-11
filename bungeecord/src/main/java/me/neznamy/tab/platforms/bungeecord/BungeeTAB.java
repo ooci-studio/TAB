@@ -11,15 +11,25 @@ public class BungeeTAB extends Plugin {
 
     @Override
     public void onEnable() {
-        if (ReflectionUtils.classExists("net.md_5.bungee.protocol.packet.Team$NameTagVisibility")) {
+        if (isCompatible()) {
             TAB.create(new BungeePlatform(this));
         } else {
-            getLogger().warning("§c====================================================================================================");
-            getLogger().warning("§cThe plugin requires BungeeCord build #1899 " +
-                    "(released on February 1st, 2025) and up (or an equivalent fork) to work. If you are using a fork that did not" +
-                    " update to the new BungeeCord version yet, stay on TAB v5.0.5, which supports older builds.");
-            getLogger().warning("§c====================================================================================================");
+            logIncompatibleVersionWarning();
         }
+    }
+
+    private boolean isCompatible() {
+        return ReflectionUtils.classExists("net.md_5.bungee.protocol.util.Either");
+    }
+
+    private void logIncompatibleVersionWarning() {
+        int buildNumber = 1990;
+        String releaseDate = "July 14th, 2025";
+        String oldTabVersion = "5.2.4";
+        getLogger().warning("§c====================================================================================================");
+        getLogger().warning(String.format("§cThe plugin requires BungeeCord build #%d (released on %s) and up (or an equivalent fork) to work.", buildNumber, releaseDate));
+        getLogger().warning(String.format("§cIf you are using a fork that did not update to the new BungeeCord version yet, stay on TAB v%s, which supports older builds.", oldTabVersion));
+        getLogger().warning("§c====================================================================================================");
     }
 
     @Override

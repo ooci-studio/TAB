@@ -5,6 +5,8 @@ import me.neznamy.tab.shared.TabConstants;
 import me.neznamy.tab.shared.TAB;
 import me.neznamy.tab.shared.cpu.ThreadExecutor;
 import me.neznamy.tab.shared.cpu.TimedCaughtTask;
+import me.neznamy.tab.shared.data.Server;
+import me.neznamy.tab.shared.data.World;
 import me.neznamy.tab.shared.platform.TabPlayer;
 import me.neznamy.tab.shared.features.types.*;
 import org.jetbrains.annotations.NotNull;
@@ -35,10 +37,10 @@ public class SpectatorFix extends TabFeature implements JoinListener, GameModeLi
         for (TabPlayer target : TAB.getInstance().getOnlinePlayers()) {
             if (viewer == target) continue;
             if (target.getGamemode() == 3 && !viewer.hasPermission(TabConstants.Permission.SPECTATOR_BYPASS)) {
-                viewer.getTabList().updateGameMode(target.getTablistId(), realGameMode ? target.getGamemode() : 0);
+                viewer.getTabList().updateGameMode(target, realGameMode ? target.getGamemode() : 0);
             }
             if (mutually && viewer.getGamemode() == 3 && !target.hasPermission(TabConstants.Permission.SPECTATOR_BYPASS)) {
-                target.getTabList().updateGameMode(viewer.getTablistId(), realGameMode ? viewer.getGamemode() : 0);
+                target.getTabList().updateGameMode(viewer, realGameMode ? viewer.getGamemode() : 0);
             }
         }
     }
@@ -48,8 +50,8 @@ public class SpectatorFix extends TabFeature implements JoinListener, GameModeLi
         if (player.getGamemode() != 3) return;
         for (TabPlayer viewer : TAB.getInstance().getOnlinePlayers()) {
             if (viewer.hasPermission(TabConstants.Permission.SPECTATOR_BYPASS)) continue;
-            if (player != viewer && player.server.equals(viewer.server)) {
-                viewer.getTabList().updateGameMode(player.getTablistId(), 0);
+            if (player != viewer && player.server == viewer.server) {
+                viewer.getTabList().updateGameMode(player, 0);
             }
         }
     }
@@ -75,7 +77,7 @@ public class SpectatorFix extends TabFeature implements JoinListener, GameModeLi
     }
 
     @Override
-    public void onServerChange(@NotNull TabPlayer changed, @NotNull String from, @NotNull String to) {
+    public void onServerChange(@NotNull TabPlayer changed, @NotNull Server from, @NotNull Server to) {
         // 200ms delay for global playerlist, taking extra time
         customThread.executeLater(new TimedCaughtTask(TAB.getInstance().getCpu(), () -> {
             for (TabPlayer all : TAB.getInstance().getOnlinePlayers()) {
@@ -85,12 +87,12 @@ public class SpectatorFix extends TabFeature implements JoinListener, GameModeLi
     }
 
     @Override
-    public void onWorldChange(@NotNull TabPlayer changed, @NotNull String from, @NotNull String to) {
+    public void onWorldChange(@NotNull TabPlayer changed, @NotNull World from, @NotNull World to) {
         // Some server versions may resend gamemode on world switch, resend false value again
         if (changed.getGamemode() != 3) return;
         for (TabPlayer viewer : TAB.getInstance().getOnlinePlayers()) {
             if (viewer == changed || viewer.hasPermission(TabConstants.Permission.SPECTATOR_BYPASS)) continue;
-            viewer.getTabList().updateGameMode(changed.getTablistId(), 0);
+            viewer.getTabList().updateGameMode(changed, 0);
         }
     }
 
@@ -99,7 +101,7 @@ public class SpectatorFix extends TabFeature implements JoinListener, GameModeLi
         if (player.isVanished() || player.getGamemode() != 3) return;
         for (TabPlayer viewer : TAB.getInstance().getOnlinePlayers()) {
             if (viewer == player || viewer.hasPermission(TabConstants.Permission.SPECTATOR_BYPASS)) continue;
-            viewer.getTabList().updateGameMode(player.getTablistId(), 0);
+            viewer.getTabList().updateGameMode(player, 0);
         }
     }
 

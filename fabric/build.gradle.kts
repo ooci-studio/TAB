@@ -1,5 +1,5 @@
 plugins {
-    id("dev.architectury.loom")
+    id("fabric-loom") version ("1.11-SNAPSHOT")
 }
 
 repositories {
@@ -11,11 +11,13 @@ repositories {
     maven("https://maven.nucleoid.xyz/")
 }
 
-val minecraftVersion = "25w19a"
+val minecraftVersion = "1.21.8"
 
 // Fabric API versions for each Minecraft version for easier backporting
 val fabricApiVersions = mapOf(
-    "25w19a" to "0.119.10+1.21.6",
+    "1.21.8" to "0.129.0+1.21.8",
+    "1.21.7" to "0.128.1+1.21.7",
+    "1.21.6" to "0.125.1+1.21.6",
     "1.21.5" to "0.119.9+1.21.5",
     "1.21.4" to "0.119.2+1.21.4",
     "1.21.3" to "0.114.0+1.21.3",
@@ -53,7 +55,7 @@ dependencies {
     api(projects.shared)
     modImplementation("me.lucko:fabric-permissions-api:0.2-SNAPSHOT")
     modImplementation("eu.pb4:placeholder-api:2.5.0+1.21.2")
-    modImplementation("net.fabricmc:fabric-loader:0.15.10")
+    modImplementation("net.fabricmc:fabric-loader:0.17.1")
     modImplementation(fabricApi.module("fabric-lifecycle-events-v1", fabricApiVersions[minecraftVersion]))
     modImplementation(fabricApi.module("fabric-networking-api-v1", fabricApiVersions[minecraftVersion]))
     modImplementation(fabricApi.module("fabric-entity-events-v1", fabricApiVersions[minecraftVersion]))

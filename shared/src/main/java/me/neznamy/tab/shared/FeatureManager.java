@@ -7,7 +7,10 @@ import me.neznamy.tab.shared.TabConstants.CpuUsageCategory;
 import me.neznamy.tab.shared.config.files.Config;
 import me.neznamy.tab.shared.config.mysql.MySQLUserConfiguration;
 import me.neznamy.tab.shared.cpu.TimedCaughtTask;
-import me.neznamy.tab.shared.features.*;
+import me.neznamy.tab.shared.data.Server;
+import me.neznamy.tab.shared.data.World;
+import me.neznamy.tab.shared.features.NickCompatibility;
+import me.neznamy.tab.shared.features.SpectatorFix;
 import me.neznamy.tab.shared.features.belowname.BelowName;
 import me.neznamy.tab.shared.features.bossbar.BossBarManagerImpl;
 import me.neznamy.tab.shared.features.globalplayerlist.GlobalPlayerList;
@@ -63,9 +66,7 @@ public class FeatureManager {
     public void load() {
         for (TabFeature f : values) {
             if (!(f instanceof Loadable)) continue;
-            long time = System.currentTimeMillis();
             ((Loadable) f).load();
-            TAB.getInstance().debug("Feature " + f.getClass().getSimpleName() + " processed load in " + (System.currentTimeMillis()-time) + "ms");
         }
         if (TAB.getInstance().getConfiguration().getUsers() instanceof MySQLUserConfiguration) {
             MySQLUserConfiguration users = (MySQLUserConfiguration) TAB.getInstance().getConfiguration().getUsers();
@@ -84,9 +85,7 @@ public class FeatureManager {
                 ((CustomThreaded) f).getCustomThread().shutdown();
             }
             if (f instanceof UnLoadable) {
-                long time = System.currentTimeMillis();
                 ((UnLoadable) f).unload();
-                TAB.getInstance().debug("Feature " + f.getClass().getSimpleName() + " processed unload in " + (System.currentTimeMillis()-time) + "ms");
             }
         }
         for (TabFeature f : values) {
@@ -165,10 +164,31 @@ public class FeatureManager {
             }
         }
         TAB.getInstance().removePlayer(disconnectedPlayer);
-        for (TabPlayer all : TAB.getInstance().getOnlinePlayers()) {
-            ((TrackedTabList<?>)all.getTabList()).getExpectedDisplayNames().remove(disconnectedPlayer.getTablistId());
-        }
+        removeExpectedDisplayName(disconnectedPlayer.getTablistId());
         TAB.getInstance().debug("Player quit of " + disconnectedPlayer.getName() + " processed in " + (System.currentTimeMillis()-millis) + "ms");
+
+        ProxySupport proxy = getFeature(TabConstants.Feature.PROXY_SUPPORT);
+        if (proxy != null) {
+            ProxyPlayer proxyPlayer = proxy.getProxyPlayers().get(disconnectedPlayer.getUniqueId());
+            if (proxyPlayer != null && proxyPlayer.getConnectionState() == ProxyPlayer.ConnectionState.QUEUED) {
+                onJoin(proxyPlayer);
+            }
+        }
+    }
+
+    private void removeExpectedDisplayName(@NotNull UUID id) {
+        ProxySupport proxy = getFeature(TabConstants.Feature.PROXY_SUPPORT);
+        if (proxy != null) {
+            ProxyPlayer proxyPlayer = proxy.getProxyPlayers().get(id);
+            if (proxyPlayer != null) return; // Proxy player is already connected, do not remove anymore
+        }
+
+        if (TAB.getInstance().getPlayer(id) != null) return; // Real player connected in the meantime, do not remove anymore
+
+        // Player is actually not online anymore, remove to avoid memory leak
+        for (TabPlayer all : TAB.getInstance().getOnlinePlayers()) {
+            ((TrackedTabList<?>)all.getTabList()).getExpectedDisplayNames().remove(id);
+        }
     }
 
     /**
@@ -182,11 +202,7 @@ public class FeatureManager {
         TAB.getInstance().addPlayer(connectedPlayer);
         for (TabFeature f : values) {
             if (!(f instanceof JoinListener)) continue;
-            TimedCaughtTask task = new TimedCaughtTask(TAB.getInstance().getCpu(), () -> {
-                long time = System.nanoTime();
-                ((JoinListener) f).onJoin(connectedPlayer);
-                TAB.getInstance().debug("Feature " + f.getClass().getSimpleName() + " processed player join in " + (System.nanoTime()-time)/1000000 + "ms");
-            }, f.getFeatureName(), CpuUsageCategory.PLAYER_JOIN);
+            TimedCaughtTask task = new TimedCaughtTask(TAB.getInstance().getCpu(), () -> ((JoinListener) f).onJoin(connectedPlayer), f.getFeatureName(), CpuUsageCategory.PLAYER_JOIN);
             if (f instanceof CustomThreaded) {
                 ((CustomThreaded) f).getCustomThread().execute(task);
             } else {
@@ -207,12 +223,12 @@ public class FeatureManager {
      * @param   playerUUID
      *          UUID of player who switched worlds
      * @param   to
-     *          New world name
+     *          New world
      */
-    public void onWorldChange(@NotNull UUID playerUUID, @NotNull String to) {
+    public void onWorldChange(@NotNull UUID playerUUID, @NotNull World to) {
         TabPlayer changed = TAB.getInstance().getPlayer(playerUUID);
         if (changed == null) return;
-        String from = changed.world;
+        World from = changed.world;
         changed.world = to;
         for (TabFeature f : values) {
             if (!(f instanceof WorldSwitchListener)) continue;
@@ -224,7 +240,7 @@ public class FeatureManager {
                 task.run();
             }
         }
-        ((PlayerPlaceholder)TAB.getInstance().getPlaceholderManager().getPlaceholder(TabConstants.Placeholder.WORLD)).updateValue(changed, to);
+        ((PlayerPlaceholder)TAB.getInstance().getPlaceholderManager().getPlaceholder(TabConstants.Placeholder.WORLD)).updateValue(changed, to.getName());
     }
 
     /**
@@ -235,10 +251,10 @@ public class FeatureManager {
      * @param   to
      *          New server name
      */
-    public void onServerChange(@NotNull UUID playerUUID, @NotNull String to) {
+    public void onServerChange(@NotNull UUID playerUUID, @NotNull Server to) {
         TabPlayer changed = TAB.getInstance().getPlayer(playerUUID);
         if (changed == null) return;
-        String from = changed.server;
+        Server from = changed.server;
         changed.server = to;
         ((ProxyTabPlayer)changed).sendJoinPluginMessage();
         for (TabFeature f : values) {
@@ -251,7 +267,7 @@ public class FeatureManager {
                 task.run();
             }
         }
-        ((PlayerPlaceholder)TAB.getInstance().getPlaceholderManager().getPlaceholder(TabConstants.Placeholder.SERVER)).updateValue(changed, to);
+        ((PlayerPlaceholder)TAB.getInstance().getPlaceholderManager().getPlaceholder(TabConstants.Placeholder.SERVER)).updateValue(changed, to.getName());
     }
 
     /**
@@ -426,16 +442,25 @@ public class FeatureManager {
      *          Player who joined
      */
     public void onJoin(@NotNull ProxyPlayer connectedPlayer) {
-        for (TabFeature f : values) {
-            if (!(f instanceof ProxyFeature)) continue;
-            TimedCaughtTask task = new TimedCaughtTask(TAB.getInstance().getCpu(),
-                    () -> ((ProxyFeature) f).onJoin(connectedPlayer), f.getFeatureName(), CpuUsageCategory.PLAYER_JOIN);
-            if (f instanceof CustomThreaded) {
-                ((CustomThreaded) f).getCustomThread().execute(task);
-            } else {
-                task.run();
+        // Delay to let server remove the player from tablist, and then we can potentially add the player back
+        // No delay could cause the server to send tablist remove packet of real player AFTER we sent add, removing the player
+        TAB.getInstance().getCpu().getProcessingThread().executeLater(new TimedCaughtTask(TAB.getInstance().getCpu(), () -> {
+            if (connectedPlayer.getConnectionState() == ProxyPlayer.ConnectionState.DISCONNECTED) return; // Player immediately disconnected in the meantime
+            connectedPlayer.setConnectionState(ProxyPlayer.ConnectionState.CONNECTED);
+            for (TabFeature f : values) {
+                if (!(f instanceof ProxyFeature)) continue;
+                TimedCaughtTask task = new TimedCaughtTask(TAB.getInstance().getCpu(),
+                        () -> ((ProxyFeature) f).onJoin(connectedPlayer), f.getFeatureName(), CpuUsageCategory.PLAYER_JOIN);
+                if (f instanceof CustomThreaded) {
+                    ((CustomThreaded) f).getCustomThread().execute(task);
+                } else {
+                    task.run();
+                }
             }
-        }
+            if (connectedPlayer.isVanished()) {
+                onVanishStatusChange(connectedPlayer);
+            }
+        }, getFeature(TabConstants.Feature.PROXY_SUPPORT).getFeatureName(), CpuUsageCategory.PLAYER_JOIN), 200);
     }
 
     /**
@@ -464,6 +489,7 @@ public class FeatureManager {
      *          Player who left
      */
     public void onQuit(@NotNull ProxyPlayer disconnectedPlayer) {
+        disconnectedPlayer.setConnectionState(ProxyPlayer.ConnectionState.DISCONNECTED);
         for (TabFeature f : values) {
             if (!(f instanceof ProxyFeature)) continue;
             TimedCaughtTask task = new TimedCaughtTask(TAB.getInstance().getCpu(),
@@ -474,9 +500,7 @@ public class FeatureManager {
                 task.run();
             }
         }
-        for (TabPlayer all : TAB.getInstance().getOnlinePlayers()) {
-            ((TrackedTabList<?>)all.getTabList()).getExpectedDisplayNames().remove(disconnectedPlayer.getUniqueId());
-        }
+        removeExpectedDisplayName(disconnectedPlayer.getTablistId());
     }
 
     /**

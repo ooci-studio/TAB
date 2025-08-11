@@ -11,6 +11,8 @@ import me.neznamy.tab.shared.Property;
 import me.neznamy.tab.shared.ProtocolVersion;
 import me.neznamy.tab.shared.TAB;
 import me.neznamy.tab.shared.TabConstants;
+import me.neznamy.tab.shared.data.Server;
+import me.neznamy.tab.shared.data.World;
 import me.neznamy.tab.shared.event.impl.PlayerLoadEventImpl;
 import me.neznamy.tab.shared.features.NickCompatibility;
 import me.neznamy.tab.shared.features.belowname.BelowNamePlayerData;
@@ -62,11 +64,13 @@ public abstract class TabPlayer implements me.neznamy.tab.api.TabPlayer {
      * installed on proxy and bridge is not installed
      */
     @Getter
-    public String world;
+    @NotNull
+    public World world;
 
     /** Server the player is currently in, {@code "N/A"} if TAB is installed on backend */
     @Getter
-    public String server;
+    @NotNull
+    public Server server;
 
     /** Player's permission group defined in permission plugin or with permission nodes */
     @Getter
@@ -171,8 +175,8 @@ public abstract class TabPlayer implements me.neznamy.tab.api.TabPlayer {
         this.player = player;
         this.uniqueId = uniqueId;
         this.name = name;
-        this.server = server;
-        this.world = world;
+        this.server = Server.byName(server);
+        this.world = World.byName(world);
         nickname = name;
         version = ProtocolVersion.fromNetworkId(protocolVersion);
         bedrockPlayer = FloodgateHook.getInstance().isFloodgatePlayer(uniqueId, name);
@@ -325,6 +329,7 @@ public abstract class TabPlayer implements me.neznamy.tab.api.TabPlayer {
      * @return  {@code true} if can see, {@code false} if not.
      */
     public boolean canSee(@NotNull TabPlayer target) {
+        if (target == this) return true;
         if (!VanishIntegration.getHandlers().isEmpty()) {
             try {
                 for (VanishIntegration i : VanishIntegration.getHandlers()) {

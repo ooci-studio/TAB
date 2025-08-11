@@ -6,6 +6,8 @@ import me.neznamy.tab.shared.TAB;
 import me.neznamy.tab.shared.TabConstants;
 import me.neznamy.tab.shared.cpu.ThreadExecutor;
 import me.neznamy.tab.shared.cpu.TimedCaughtTask;
+import me.neznamy.tab.shared.data.Server;
+import me.neznamy.tab.shared.data.World;
 import me.neznamy.tab.shared.features.proxy.ProxyPlayer;
 import me.neznamy.tab.shared.features.proxy.ProxySupport;
 import me.neznamy.tab.shared.features.types.*;
@@ -58,7 +60,7 @@ public class BelowName extends RefreshableFeature implements JoinListener, QuitL
         TAB.getInstance().getFeatureManager().registerFeature(TabConstants.Feature.BELOW_NAME + "-Condition", disableChecker);
         TAB.getInstance().getFeatureManager().registerFeature(TabConstants.Feature.BELOW_NAME_TEXT, textRefresher);
         if (proxy != null) {
-            proxy.registerMessage("belowname", BelowNameUpdateProxyPlayer.class, () -> new BelowNameUpdateProxyPlayer(this));
+            proxy.registerMessage(BelowNameUpdateProxyPlayer.class, in -> new BelowNameUpdateProxyPlayer(in, this));
         }
     }
 
@@ -251,16 +253,16 @@ public class BelowName extends RefreshableFeature implements JoinListener, QuitL
      * @return  {@code true} if players are in the same server and world, {@code false} otherwise
      */
     private boolean sameServerAndWorld(@NotNull TabPlayer player1, @NotNull TabPlayer player2) {
-        return player1.server.equals(player2.server) && player1.world.equals(player2.world);
+        return player1.server == player2.server && player1.world == player2.world;
     }
 
     @Override
-    public void onServerChange(@NotNull TabPlayer changed, @NotNull String from, @NotNull String to) {
+    public void onServerChange(@NotNull TabPlayer changed, @NotNull Server from, @NotNull Server to) {
         updatePlayer(changed);
     }
 
     @Override
-    public void onWorldChange(@NotNull TabPlayer changed, @NotNull String from, @NotNull String to) {
+    public void onWorldChange(@NotNull TabPlayer changed, @NotNull World from, @NotNull World to) {
         updatePlayer(changed);
     }
 
@@ -290,6 +292,25 @@ public class BelowName extends RefreshableFeature implements JoinListener, QuitL
     @Override
     public void onQuit(@NotNull TabPlayer disconnectedPlayer) {
         onlinePlayers.removePlayer(disconnectedPlayer);
+    }
+
+    @Override
+    public void onJoin(@NotNull ProxyPlayer player) {
+        updatePlayer(player);
+    }
+
+    public void updatePlayer(@NotNull ProxyPlayer player) {
+        if (player.getBelowNameFancy() == null) return; // Player not loaded yet
+        for (TabPlayer viewer : onlinePlayers.getPlayers()) {
+            if (viewer.belowNameData.disabled.get()) continue;
+            viewer.getScoreboard().setScore(
+                    OBJECTIVE_NAME,
+                    player.getNickname(),
+                    player.getBelowNameNumber(),
+                    null, // Unused by this objective slot
+                    player.getBelowNameFancy()
+            );
+        }
     }
 
     // ------------------

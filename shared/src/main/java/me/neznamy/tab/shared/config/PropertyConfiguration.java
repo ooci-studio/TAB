@@ -3,6 +3,8 @@ package me.neznamy.tab.shared.config;
 import com.google.common.collect.Lists;
 import lombok.NonNull;
 import me.neznamy.tab.shared.TAB;
+import me.neznamy.tab.shared.data.Server;
+import me.neznamy.tab.shared.data.World;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -30,13 +32,13 @@ public interface PropertyConfiguration {
      * @param   property
      *          Name of property to set
      * @param   server
-     *          Name of server to apply setting to, {@code null} for global setting
+     *          Server to apply setting to, {@code null} for global setting
      * @param   world
-     *          Name of world to apply setting to, {@code null} for global setting
+     *          World to apply setting to, {@code null} for global setting
      * @param   value
      *          Value of the property
      */
-    void setProperty(@NonNull String groupOrUser, @NonNull String property, @Nullable String server, @Nullable String world, @Nullable String value);
+    void setProperty(@NonNull String groupOrUser, @NonNull String property, @Nullable Server server, @Nullable World world, @Nullable String value);
 
     /**
      * Gets property of group or user. If {@code server} or {@code world}
@@ -57,7 +59,7 @@ public interface PropertyConfiguration {
      *          empty array if nothing was found.
      */
     @NotNull
-    String[] getProperty(@NonNull String groupOrUser, @NonNull String property, @Nullable String server, @Nullable String world);
+    String[] getProperty(@NonNull String groupOrUser, @NonNull String property, @Nullable Server server, @Nullable World world);
 
     /**
      * Removes all data applied to specified group or user.
@@ -182,11 +184,11 @@ public interface PropertyConfiguration {
      *          Whether the message should be printed as startup warn and counted or not
      */
     default void checkProperty(@NonNull String source, @NonNull String type, @NonNull String name, @NonNull String property,
-                               @Nullable String server, @Nullable String world, boolean startupWarn) {
-        if (VALID_PROPERTIES.contains(property)) return;
+                               @Nullable Server server, @Nullable World world, boolean startupWarn) {
+        if (VALID_PROPERTIES.contains(property.toLowerCase(Locale.US))) return;
         StringBuilder msg = new StringBuilder(String.format("[%s] Unknown property \"%s\" defined for %s \"%s\"", source, property, type, name));
-        if (world != null) msg.append(" in world \"").append(world).append("\"");
-        if (server != null) msg.append(" in server \"").append(server).append("\"");
+        if (world != null) msg.append(" in world \"").append(world.getName()).append("\"");
+        if (server != null) msg.append(" in server \"").append(server.getName()).append("\"");
         msg.append(". Valid properties: ").append(VALID_PROPERTIES);
         if (startupWarn) {
             TAB.getInstance().getConfigHelper().startup().startupWarn(msg.toString());

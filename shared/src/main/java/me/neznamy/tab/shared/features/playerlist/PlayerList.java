@@ -2,7 +2,6 @@ package me.neznamy.tab.shared.features.playerlist;
 
 import lombok.Getter;
 import lombok.NonNull;
-import me.neznamy.chat.component.SimpleTextComponent;
 import me.neznamy.chat.component.TabComponent;
 import me.neznamy.tab.api.tablist.TabListFormatManager;
 import me.neznamy.tab.shared.Property;
@@ -10,6 +9,8 @@ import me.neznamy.tab.shared.TAB;
 import me.neznamy.tab.shared.TabConstants;
 import me.neznamy.tab.shared.TabConstants.CpuUsageCategory;
 import me.neznamy.tab.shared.cpu.TimedCaughtTask;
+import me.neznamy.tab.shared.data.Server;
+import me.neznamy.tab.shared.data.World;
 import me.neznamy.tab.shared.features.layout.PlayerSlot;
 import me.neznamy.tab.shared.features.proxy.ProxyPlayer;
 import me.neznamy.tab.shared.features.proxy.ProxySupport;
@@ -46,16 +47,13 @@ public class PlayerList extends RefreshableFeature implements TabListFormatManag
         this.configuration = configuration;
         disableChecker = new DisableChecker(this, Condition.getCondition(configuration.getDisableCondition()), this::onDisableConditionChange, p -> p.tablistData.disabled);
         TAB.getInstance().getFeatureManager().registerFeature(TabConstants.Feature.PLAYER_LIST + "-Condition", disableChecker);
-        if (configuration.isAntiOverride()) {
-            TAB.getInstance().getCpu().getTablistEntryCheckThread().repeatTask(new TimedCaughtTask(TAB.getInstance().getCpu(), () -> {
-                        for (TabPlayer p : TAB.getInstance().getOnlinePlayers()) {
-                            ((TrackedTabList<?>)p.getTabList()).checkDisplayNames();
-                        }
-                    }, getFeatureName(), CpuUsageCategory.ANTI_OVERRIDE_TABLIST_PERIODIC), 500
-            );
-        }
+        TAB.getInstance().getCpu().getTablistEntryCheckThread().repeatTask(new TimedCaughtTask(TAB.getInstance().getCpu(), () -> {
+            for (TabPlayer p : TAB.getInstance().getOnlinePlayers()) {
+                ((TrackedTabList<?>)p.getTabList()).checkDisplayNames();
+            }
+        }, getFeatureName(), CpuUsageCategory.ANTI_OVERRIDE_TABLIST_PERIODIC), 500);
         if (proxy != null) {
-            proxy.registerMessage("tabformat", PlayerListUpdateProxyPlayer.class, () -> new PlayerListUpdateProxyPlayer(this));
+            proxy.registerMessage(PlayerListUpdateProxyPlayer.class, in -> new PlayerListUpdateProxyPlayer(in, this));
         }
     }
 
@@ -119,10 +117,10 @@ public class PlayerList extends RefreshableFeature implements TabListFormatManag
      */
     public void updatePlayer(@NotNull TabPlayer player, boolean format) {
         for (TabPlayer viewer : TAB.getInstance().getOnlinePlayers()) {
-            //if (!viewer.getTabList().containsEntry(player.getTablistId())) continue;
+            if (!viewer.canSee(player)) continue;
             UUID tablistId = getTablistUUID(player, viewer);
             viewer.getTabList().updateDisplayName(tablistId, format ? getTabFormat(player, viewer) :
-                    tablistId.getMostSignificantBits() == 0 ? SimpleTextComponent.text(player.getName()) : null);
+                    tablistId.getMostSignificantBits() == 0 ? TabComponent.legacyText(player.getName()) : null);
         }
         if (proxy != null) proxy.sendMessage(new PlayerListUpdateProxyPlayer(this, player.getUniqueId(), player.getName(), player.tablistData.prefix.get() +
                 player.tablistData.name.get() + player.tablistData.suffix.get()));
@@ -150,11 +148,7 @@ public class PlayerList extends RefreshableFeature implements TabListFormatManag
 
     @Override
     public void load() {
-        if (proxy != null) {
-            TAB.getInstance().debug("[Proxy Support] Sending tablist update of all players on load");
-        }
         for (TabPlayer all : TAB.getInstance().getOnlinePlayers()) {
-            ((TrackedTabList<?>)all.getTabList()).setAntiOverride(configuration.isAntiOverride());
             loadProperties(all);
             if (disableChecker.isDisableConditionMet(all)) {
                 all.tablistData.disabled.set(true);
@@ -166,7 +160,7 @@ public class PlayerList extends RefreshableFeature implements TabListFormatManag
         for (TabPlayer viewer : TAB.getInstance().getOnlinePlayers()) {
             for (TabPlayer target : TAB.getInstance().getOnlinePlayers()) {
                 if (target.tablistData.disabled.get()) continue;
-                //if (!viewer.getTabList().containsEntry(target.getTablistId())) continue;
+                if (!viewer.canSee(target)) continue;
                 viewer.getTabList().updateDisplayName(getTablistUUID(target, viewer), getTabFormat(target, viewer));
             }
         }
@@ -177,37 +171,33 @@ public class PlayerList extends RefreshableFeature implements TabListFormatManag
         for (TabPlayer viewer : TAB.getInstance().getOnlinePlayers()) {
             for (TabPlayer target : TAB.getInstance().getOnlinePlayers()) {
                 if (target.tablistData.disabled.get()) continue;
-                //if (!viewer.getTabList().containsEntry(target.getTablistId())) continue;
+                if (!viewer.canSee(target)) continue;
                 viewer.getTabList().updateDisplayName(getTablistUUID(target, target), null);
             }
         }
     }
 
     @Override
-    public void onServerChange(@NotNull TabPlayer p, @NotNull String from, @NotNull String to) {
+    public void onServerChange(@NotNull TabPlayer p, @NotNull Server from, @NotNull Server to) {
         if (updateProperties(p) && !p.tablistData.disabled.get()) updatePlayer(p, true);
         if (TAB.getInstance().getFeatureManager().isFeatureEnabled(TabConstants.Feature.PIPELINE_INJECTION)) return;
         TAB.getInstance().getCpu().getProcessingThread().executeLater(new TimedCaughtTask(TAB.getInstance().getCpu(), () -> {
             for (TabPlayer all : TAB.getInstance().getOnlinePlayers()) {
-                if (!all.tablistData.disabled.get()
-                        //&& p.getTabList().containsEntry(all.getTablistId())
-                )
+                if (!all.tablistData.disabled.get() && p.canSee(all))
                     p.getTabList().updateDisplayName(getTablistUUID(all, p), getTabFormat(all, p));
-                if (all != p && !p.tablistData.disabled.get()
-                        //&& all.getTabList().containsEntry(p.getTablistId())
-                )
+                if (all != p && !p.tablistData.disabled.get() && all.canSee(p))
                     all.getTabList().updateDisplayName(getTablistUUID(p, all), getTabFormat(p, all));
             }
             if (proxy != null) {
                 for (ProxyPlayer proxied : proxy.getProxyPlayers().values()) {
-                    p.getTabList().updateDisplayName(proxied.getUniqueId(), proxied.getTabFormat());
+                    p.getTabList().updateDisplayName(proxied.getTablistId(), proxied.getTabFormat());
                 }
             }
         }, getFeatureName(), CpuUsageCategory.PLAYER_JOIN), 300);
     }
 
     @Override
-    public void onWorldChange(@NotNull TabPlayer changed, @NotNull String from, @NotNull String to) {
+    public void onWorldChange(@NotNull TabPlayer changed, @NotNull World from, @NotNull World to) {
         if (updateProperties(changed) && !changed.tablistData.disabled.get()) updatePlayer(changed, true);
     }
 
@@ -257,7 +247,6 @@ public class PlayerList extends RefreshableFeature implements TabListFormatManag
 
     @Override
     public void onJoin(@NotNull TabPlayer connectedPlayer) {
-        ((TrackedTabList<?>)connectedPlayer.getTabList()).setAntiOverride(configuration.isAntiOverride());
         loadProperties(connectedPlayer);
         if (disableChecker.isDisableConditionMet(connectedPlayer)) {
             connectedPlayer.tablistData.disabled.set(true);
@@ -268,16 +257,17 @@ public class PlayerList extends RefreshableFeature implements TabListFormatManag
             for (TabPlayer all : TAB.getInstance().getOnlinePlayers()) {
                 if (all == connectedPlayer) continue; // Already updated above
                 if (all.tablistData.disabled.get()) continue;
+                if (!connectedPlayer.canSee(all)) continue;
                 connectedPlayer.getTabList().updateDisplayName(getTablistUUID(all, connectedPlayer), getTabFormat(all, connectedPlayer));
             }
             if (proxy != null) {
                 for (ProxyPlayer proxied : proxy.getProxyPlayers().values()) {
-                    connectedPlayer.getTabList().updateDisplayName(proxied.getUniqueId(), proxied.getTabFormat());
+                    connectedPlayer.getTabList().updateDisplayName(proxied.getTablistId(), proxied.getTabFormat());
                 }
             }
         };
         //add packet might be sent after tab's refresh packet, resending again when anti-override is disabled
-        if (!configuration.isAntiOverride() || !TAB.getInstance().getFeatureManager().isFeatureEnabled(TabConstants.Feature.PIPELINE_INJECTION)) {
+        if (!TAB.getInstance().getFeatureManager().isFeatureEnabled(TabConstants.Feature.PIPELINE_INJECTION)) {
             TAB.getInstance().getCpu().getProcessingThread().executeLater(new TimedCaughtTask(TAB.getInstance().getCpu(),
                     r, getFeatureName(), CpuUsageCategory.PLAYER_JOIN), 300);
         } else {
@@ -289,7 +279,7 @@ public class PlayerList extends RefreshableFeature implements TabListFormatManag
     public void onVanishStatusChange(@NotNull TabPlayer player) {
         if (player.isVanished() || player.tablistData.disabled.get()) return;
         for (TabPlayer viewer : TAB.getInstance().getOnlinePlayers()) {
-            //if (!viewer.getTabList().containsEntry(player.getTablistId())) continue;
+            if (!viewer.canSee(player)) continue;
             viewer.getTabList().updateDisplayName(player.getTablistId(), getTabFormat(player, viewer));
         }
     }
@@ -347,24 +337,69 @@ public class PlayerList extends RefreshableFeature implements TabListFormatManag
     }
 
     @Override
-    public @NotNull String getOriginalPrefix(@NonNull me.neznamy.tab.api.TabPlayer player) {
+    @NotNull
+    public String getOriginalPrefix(@NonNull me.neznamy.tab.api.TabPlayer player) {
+        return getOriginalRawPrefix(player);
+    }
+
+    @Override
+    @NotNull
+    public String getOriginalName(@NonNull me.neznamy.tab.api.TabPlayer player) {
+        return getOriginalRawName(player);
+    }
+
+    @Override
+    @NotNull
+    public String getOriginalSuffix(@NonNull me.neznamy.tab.api.TabPlayer player) {
+        return getOriginalRawSuffix(player);
+    }
+
+    @Override
+    @NotNull
+    public String getOriginalRawPrefix(@NonNull me.neznamy.tab.api.TabPlayer player) {
         ensureActive();
         ((TabPlayer)player).ensureLoaded();
         return ((TabPlayer)player).tablistData.prefix.getOriginalRawValue();
     }
 
     @Override
-    public @NotNull String getOriginalName(@NonNull me.neznamy.tab.api.TabPlayer player) {
+    @NotNull
+    public String getOriginalRawName(@NonNull me.neznamy.tab.api.TabPlayer player) {
         ensureActive();
         ((TabPlayer)player).ensureLoaded();
         return ((TabPlayer)player).tablistData.name.getOriginalRawValue();
     }
 
     @Override
-    public @NotNull String getOriginalSuffix(@NonNull me.neznamy.tab.api.TabPlayer player) {
+    @NotNull
+    public String getOriginalRawSuffix(@NonNull me.neznamy.tab.api.TabPlayer player) {
         ensureActive();
         ((TabPlayer)player).ensureLoaded();
         return ((TabPlayer)player).tablistData.suffix.getOriginalRawValue();
+    }
+
+    @Override
+    @NotNull
+    public String getOriginalReplacedPrefix(@NonNull me.neznamy.tab.api.TabPlayer player) {
+        ensureActive();
+        ((TabPlayer)player).ensureLoaded();
+        return ((TabPlayer)player).tablistData.prefix.getOriginalReplacedValue();
+    }
+
+    @Override
+    @NotNull
+    public String getOriginalReplacedName(@NonNull me.neznamy.tab.api.TabPlayer player) {
+        ensureActive();
+        ((TabPlayer)player).ensureLoaded();
+        return ((TabPlayer)player).tablistData.name.getOriginalReplacedValue();
+    }
+
+    @Override
+    @NotNull
+    public String getOriginalReplacedSuffix(@NonNull me.neznamy.tab.api.TabPlayer player) {
+        ensureActive();
+        ((TabPlayer)player).ensureLoaded();
+        return ((TabPlayer)player).tablistData.suffix.getOriginalReplacedValue();
     }
 
     // ------------------
@@ -373,7 +408,6 @@ public class PlayerList extends RefreshableFeature implements TabListFormatManag
 
     @Override
     public void onProxyLoadRequest() {
-        TAB.getInstance().debug("[Proxy Support] Sending tablist update of all players as requested by another proxy");
         for (TabPlayer all : TAB.getInstance().getOnlinePlayers()) {
             proxy.sendMessage(new PlayerListUpdateProxyPlayer(this, all.getTablistId(), all.getName(), all.tablistData.prefix.get() + all.tablistData.name.get() + all.tablistData.suffix.get()));
         }
@@ -381,9 +415,19 @@ public class PlayerList extends RefreshableFeature implements TabListFormatManag
 
     @Override
     public void onVanishStatusChange(@NotNull ProxyPlayer player) {
+        updatePlayer(player);
+    }
+
+    @Override
+    public void onJoin(@NotNull ProxyPlayer player) {
+        updatePlayer(player);
+    }
+
+    public void updatePlayer(@NotNull ProxyPlayer player) {
         if (player.isVanished()) return;
+        if (player.getTabFormat() == null) return; // Player not loaded yet
         for (TabPlayer viewer : TAB.getInstance().getOnlinePlayers()) {
-            viewer.getTabList().updateDisplayName(player.getUniqueId(), player.getTabFormat());
+            viewer.getTabList().updateDisplayName(player.getTablistId(), player.getTabFormat());
         }
     }
 

@@ -39,11 +39,13 @@ public class BelowNameConfiguration {
         String title = section.getString("title", "Health");
         if (title.contains("%") && !title.contains("%animation") && !title.contains("%condition")) {
             section.startupWarn("Belowname title is set to \"" + title + "\", however, the feature cannot display different title on different players " +
-                    "due to a minecraft limitation. Placeholders will be parsed for viewing player.");
+                    "due to a minecraft limitation. Placeholders will be parsed for viewing player. To display per-player placeholders correctly, " +
+                    "move them to fancy-value and only keep static text in title (this only works on 1.20.3+, on older versions you will need to " +
+                    "use \"value\", which only supports numbers).");
         }
 
         // Check "value" for empty value
-        String value = section.getString("value", TabConstants.Placeholder.HEALTH);
+        String value = section.getObject("value", TabConstants.Placeholder.HEALTH).toString(); // Support both String and Integer
         if (value.isEmpty()) {
             section.startupWarn("Belowname value is set to be empty, but the configured value must evaluate to a number. Using 0.");
             value = "0";
